@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import { Ticket, TicketFilter } from '../../../../core/models/ticket.model';
+import { Component, Input } from '@angular/core';
+import { Ticket, TicketFilter, ViewMode } from '../../../../core/models/ticket.model';
 import { TICKETS_MOCK } from '../../../../mocks/tickets.mock';
 import { TicketListComponent } from '../../components/ticket-list/ticket-list';
 import { TicketFiltersComponent } from '../../components/ticket-filters/ticket-filters';
@@ -17,8 +17,9 @@ import { PageHeaderComponent } from '../../components/page-header/page-header';
   styleUrl: './tickets-page.css'
 })
 export class TicketsPageComponent {
-  tickets: Ticket[] = TICKETS_MOCK;
+  @Input() viewMode: ViewMode = 'MORADOR';
 
+  tickets: Ticket[] = TICKETS_MOCK;
   search = '';
   activeFilter: TicketFilter = 'TODOS';
 

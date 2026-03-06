@@ -1,10 +1,22 @@
 <section class="page-header">
   <div>
-    <h1>Chamados do Condomínio</h1>
-    <p>Visualize e acompanhe todos os chamados realizados</p>
+    <ng-container *ngIf="viewMode === 'MORADOR'; else sindicoHeader">
+      <h1>Chamados do Condomínio</h1>
+      <p>Visualize e acompanhe todos os chamados realizados</p>
+    </ng-container>
+
+    <ng-template #sindicoHeader>
+      <h1>Gerenciar Chamados</h1>
+      <p>Atualize o status e gerencie os chamados dos moradores</p>
+    </ng-template>
   </div>
 
-  <button type="button" class="new-ticket-btn" (click)="newTicket.emit()">
+  <button
+    *ngIf="viewMode === 'MORADOR'"
+    type="button"
+    class="new-ticket-btn"
+    (click)="newTicket.emit()"
+  >
     + Novo Chamado
   </button>
 </section>

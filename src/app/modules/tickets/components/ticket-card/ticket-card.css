@@ -9,6 +9,7 @@
 .top-row {
   display: flex;
   gap: 24px;
+  align-items: flex-start;
 }
 
 .avatar {
@@ -28,6 +29,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  flex: 1;
 }
 
 h2 {
@@ -69,4 +71,26 @@ h2 {
   background: #f8fafc;
   padding: 10px 14px;
   border-radius: 14px;
+}
+
+.status-dropdown select {
+  border: 1px solid #f2b4b0;
+  background: #fff7f6;
+  color: #dc2626;
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 18px;
+  outline: none;
+  cursor: pointer;
+}
+
+.updated {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #e6f6ef;
+  color: #059669;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 14px;
 }

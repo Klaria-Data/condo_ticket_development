@@ -19,6 +19,7 @@ export const TICKETS_MOCK: Ticket[] = [
     residentName: 'Maria Santos',
     apartment: 'Apto 205',
     createdAt: '04 de dez.',
+    updatedAt: '05 de dez.',
     avatarColor: '#ff4fa3'
   },
   {

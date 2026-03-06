@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { UserRole } from '../../../../core/models/ticket.model';
+import { ViewMode} from '../../../../core/models/ticket.model';
 
 @Component({
   selector: 'app-view-switcher',
@@ -10,10 +10,10 @@ import { UserRole } from '../../../../core/models/ticket.model';
   styleUrl: './view-switcher.css'
 })
 export class ViewSwitcherComponent {
-  @Input() selected: UserRole = 'MORADOR';
-  @Output() selectedChange = new EventEmitter<UserRole>();
+  @Input() selected: ViewMode = 'MORADOR';
+  @Output() selectedChange = new EventEmitter<ViewMode>();
 
-  select(role: UserRole): void {
+  select(role: ViewMode): void {
     this.selectedChange.emit(role);
   }
 }

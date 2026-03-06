@@ -1,5 +1,5 @@
 export type TicketStatus = 'ABERTO' | 'EM_ANDAMENTO' | 'RESOLVIDO' | 'CANCELADO';
-export type UserRole = 'MORADOR' | 'SINDICO';
+export type ViewMode = 'MORADOR' | 'SINDICO';
 export type TicketFilter = 'TODOS' | TicketStatus;
 
 export interface Ticket {
@@ -10,5 +10,6 @@ export interface Ticket {
   residentName: string;
   apartment: string;
   createdAt: string;
+  updatedAt?: string;
   avatarColor: string;
 }

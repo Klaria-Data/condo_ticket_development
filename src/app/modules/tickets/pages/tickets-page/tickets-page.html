@@ -1,6 +1,9 @@
 <div class="page">
   <main class="content">
-    <app-page-header (newTicket)="onNewTicket()" />
+    <app-page-header
+      [viewMode]="viewMode"
+      (newTicket)="onNewTicket()"
+    />
 
     <app-ticket-filters
       [search]="search"
@@ -9,6 +12,9 @@
       (activeFilterChange)="onFilterChange($event)"
     />
 
-    <app-ticket-list [tickets]="filteredTickets" />
+    <app-ticket-list
+      [tickets]="filteredTickets"
+      [viewMode]="viewMode"
+    />
   </main>
 </div>

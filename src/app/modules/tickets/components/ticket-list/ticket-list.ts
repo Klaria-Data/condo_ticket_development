@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
-import { Ticket } from '../../../../core/models/ticket.model';
+import { Ticket, ViewMode } from '../../../../core/models/ticket.model';
 import { TicketCardComponent } from '../ticket-card/ticket-card';
 
 @Component({
@@ -12,4 +12,5 @@ import { TicketCardComponent } from '../ticket-card/ticket-card';
 })
 export class TicketListComponent {
   @Input() tickets: Ticket[] = [];
+  @Input() viewMode: ViewMode = 'MORADOR';
 }
