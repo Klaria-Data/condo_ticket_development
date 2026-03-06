@@ -74,14 +74,53 @@ h2 {
 }
 
 .status-dropdown select {
-  border: 1px solid #f2b4b0;
-  background: #fff7f6;
-  color: #dc2626;
   border-radius: 14px;
   padding: 10px 14px;
-  font-size: 18px;
+  font-size: 16px;
   outline: none;
   cursor: pointer;
+  border: 1px solid;
+}
+
+/* opções dentro do dropdown */
+
+.status-dropdown select option[value="ABERTO"] {
+  color: #dc2626;
+  background: #fff7f6;
+}
+
+.status-dropdown select option[value="EM_ANDAMENTO"] {
+  color: #f7c948;
+  background: #fff8e6;
+}
+
+.status-dropdown select option[value="RESOLVIDO"] {
+  color: #059669;
+  background: #e6f6ef;
+}
+
+/* ABERTO */
+
+.status-dropdown select.aberto {
+  background: #fff7f6;
+  border-color: #f2b4b0;
+  color: #dc2626;
+}
+
+/* EM ANDAMENTO */
+
+.status-dropdown select.em_andamento {
+  background: #fff8e6;
+  border-color: #f7c948;
+  color: #b45309;
+}
+
+/* RESOLVIDO */
+
+.status-dropdown select.resolvido {
+  background: #e6f6ef;
+  border-color: #34d399;
+  color: #059669;
 }
 
 .updated {
