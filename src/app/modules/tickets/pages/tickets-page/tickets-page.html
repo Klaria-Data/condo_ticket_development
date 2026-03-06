@@ -17,4 +17,10 @@
       [viewMode]="viewMode"
     />
   </main>
+
+  <app-new-ticket-modal
+    *ngIf="isNewTicketModalOpen"
+    (close)="closeNewTicketModal()"
+    (create)="createTicket($event)"
+  />
 </div>

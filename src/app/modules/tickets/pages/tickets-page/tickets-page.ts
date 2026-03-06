@@ -4,6 +4,8 @@ import { TICKETS_MOCK } from '../../../../mocks/tickets.mock';
 import { TicketListComponent } from '../../components/ticket-list/ticket-list';
 import { TicketFiltersComponent } from '../../components/ticket-filters/ticket-filters';
 import { PageHeaderComponent } from '../../components/page-header/page-header';
+import { NewTicketModalComponent } from '../../components/new-ticket-modal/new-ticket-modal';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-tickets-page',
@@ -11,10 +13,11 @@ import { PageHeaderComponent } from '../../components/page-header/page-header';
   imports: [
     TicketListComponent,
     TicketFiltersComponent,
-    PageHeaderComponent
+    PageHeaderComponent,
+    NewTicketModalComponent,CommonModule,
   ],
   templateUrl: './tickets-page.html',
-  styleUrl: './tickets-page.css'
+  styleUrls: ['./tickets-page.css']
 })
 export class TicketsPageComponent {
   @Input() viewMode: ViewMode = 'MORADOR';
@@ -22,6 +25,7 @@ export class TicketsPageComponent {
   tickets: Ticket[] = TICKETS_MOCK;
   search = '';
   activeFilter: TicketFilter = 'TODOS';
+  isNewTicketModalOpen = false;
 
   onSearchChange(value: string): void {
     this.search = value;
@@ -32,7 +36,16 @@ export class TicketsPageComponent {
   }
 
   onNewTicket(): void {
-    console.log('Abrir fluxo de novo chamado');
+    alert('clicou');
+    this.isNewTicketModalOpen = true;
+  }
+
+  closeNewTicketModal(): void {
+    this.isNewTicketModalOpen = false;
+  }
+
+  createTicket(ticket: Ticket): void {
+    this.tickets = [ticket, ...this.tickets];
   }
 
   get filteredTickets(): Ticket[] {
