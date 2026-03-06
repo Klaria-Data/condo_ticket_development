@@ -1,1 +1,13 @@
-<p>ticket-list works!</p>
+<section class="list" *ngIf="tickets.length > 0; else emptyState">
+  <app-ticket-card
+    *ngFor="let ticket of tickets"
+    [ticket]="ticket"
+  />
+</section>
+
+<ng-template #emptyState>
+  <div class="empty-state">
+    <h3>Nenhum chamado encontrado</h3>
+    <p>Tente ajustar a busca ou os filtros selecionados.</p>
+  </div>
+</ng-template>

@@ -1,9 +1,15 @@
-import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component, Input } from '@angular/core';
+import { Ticket } from '../../../../core/models/ticket.model';
+import { TicketCardComponent } from '../ticket-card/ticket-card';
 
 @Component({
   selector: 'app-ticket-list',
-  imports: [],
+  standalone: true,
+  imports: [CommonModule, TicketCardComponent],
   templateUrl: './ticket-list.html',
-  styleUrl: './ticket-list.css',
+  styleUrl: './ticket-list.css'
 })
-export class TicketList {}
+export class TicketListComponent {
+  @Input() tickets: Ticket[] = [];
+}

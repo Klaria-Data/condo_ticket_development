@@ -1,1 +1,26 @@
-<p>ticket-card works!</p>
+<article class="ticket-card">
+  <div class="top-row">
+    <div
+      class="avatar"
+      [style.background]="ticket.avatarColor"
+    >
+      {{ initials }}
+    </div>
+
+    <div class="content">
+      <h2>{{ ticket.title }}</h2>
+      <p class="description">{{ ticket.description }}</p>
+
+      <app-status-badge [status]="ticket.status" />
+
+      <div class="meta">
+        <div class="mini-avatar" [style.background]="ticket.avatarColor">
+          {{ initials }}
+        </div>
+        <span>{{ ticket.residentName }}</span>
+        <span class="chip">🏠 {{ ticket.apartment }}</span>
+        <span class="chip">🕒 {{ ticket.createdAt }}</span>
+      </div>
+    </div>
+  </div>
+</article>

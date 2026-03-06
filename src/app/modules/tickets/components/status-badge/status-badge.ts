@@ -1,9 +1,29 @@
-import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component, Input } from '@angular/core';
+import { TicketStatus } from '../../../../core/models/ticket.model';
 
 @Component({
   selector: 'app-status-badge',
-  imports: [],
+  standalone: true,
+  imports: [CommonModule],
   templateUrl: './status-badge.html',
-  styleUrl: './status-badge.css',
+  styleUrl: './status-badge.css'
 })
-export class StatusBadge {}
+export class StatusBadgeComponent {
+  @Input({ required: true }) status!: TicketStatus;
+
+  get label(): string {
+    switch (this.status) {
+      case 'ABERTO':
+        return 'Aberto';
+      case 'EM_ANDAMENTO':
+        return 'Em Andamento';
+      case 'RESOLVIDO':
+        return 'Resolvido';
+      case 'CANCELADO':
+        return 'Cancelado';
+      default:
+        return this.status;
+    }
+  }
+}

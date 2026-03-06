@@ -1,12 +1,14 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component } from '@angular/core';
+import { AppHeaderComponent } from './shared/components/header/header';
+import { TicketsPageComponent } from './modules/tickets/pages/tickets-page/tickets-page';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
-  templateUrl: './app.html',
-  styleUrl: './app.css',
+  standalone: true,
+  imports: [AppHeaderComponent, TicketsPageComponent],
+  template: `
+    <app-header></app-header>
+    <app-tickets-page></app-tickets-page>
+  `
 })
-export class App {
-  protected readonly title = signal('condo-ticket');
-}
+export class App {}

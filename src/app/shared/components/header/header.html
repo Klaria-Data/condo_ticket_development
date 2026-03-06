@@ -1,0 +1,30 @@
+<header class="header">
+  <div class="left">
+    <div class="icon">🏢</div>
+
+    <div>
+      <h1>Chamados Condomínio</h1>
+      <p>Gerencie suas solicitações</p>
+    </div>
+  </div>
+
+  <div class="switch">
+    <span>Visualizar como:</span>
+
+    <div class="buttons">
+      <button
+        [class.active]="viewMode === 'MORADOR'"
+        (click)="setMode('MORADOR')"
+      >
+        Morador
+      </button>
+
+      <button
+        [class.active]="viewMode === 'SINDICO'"
+        (click)="setMode('SINDICO')"
+      >
+        Síndico
+      </button>
+    </div>
+  </div>
+</header>

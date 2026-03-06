@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { TicketCard } from './ticket-card';
+import { PageHeader } from './page-header';
 
-describe('TicketCard', () => {
-  let component: TicketCard;
-  let fixture: ComponentFixture<TicketCard>;
+describe('PageHeader', () => {
+  let component: PageHeader;
+  let fixture: ComponentFixture<PageHeader>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TicketCard],
+      imports: [PageHeader],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(TicketCard);
-    component = fixtureInstance;
+    fixture = TestBed.createComponent(PageHeader);
+    component = fixture.componentInstance;
     await fixture.whenStable();
   });
 
