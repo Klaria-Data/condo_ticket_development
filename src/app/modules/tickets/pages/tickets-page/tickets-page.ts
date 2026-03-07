@@ -14,7 +14,8 @@ import { CommonModule } from '@angular/common';
     TicketListComponent,
     TicketFiltersComponent,
     PageHeaderComponent,
-    NewTicketModalComponent,CommonModule,
+    NewTicketModalComponent,
+    CommonModule,
   ],
   templateUrl: './tickets-page.html',
   styleUrls: ['./tickets-page.css']

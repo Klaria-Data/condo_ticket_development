@@ -53,6 +53,24 @@
   padding: 28px 30px;
 }
 
+.required-hint {
+  margin: 0 0 20px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.required-hint span,
+.required {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.optional {
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 400;
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -76,6 +94,7 @@
   color: #334155;
   outline: none;
   box-sizing: border-box;
+  background: #fff;
 }
 
 .field input::placeholder,
@@ -87,6 +106,18 @@
   resize: vertical;
   min-height: 140px;
   font-family: inherit;
+}
+
+.field input.invalid,
+.field textarea.invalid {
+  border-color: #ef4444;
+  background: #fff7f7;
+}
+
+.error-message {
+  color: #dc2626;
+  font-size: 13px;
+  margin-top: -2px;
 }
 
 .row {

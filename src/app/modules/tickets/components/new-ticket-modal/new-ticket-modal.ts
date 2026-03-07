@@ -19,6 +19,14 @@ export class NewTicketModalComponent {
   residentName = '';
   apartment = '';
   selectedFileName = '';
+  submitted = false;
+
+  errors = {
+    title: '',
+    description: '',
+    residentName: '',
+    apartment: ''
+  };
 
   onClose(): void {
     this.close.emit();
@@ -33,13 +41,58 @@ export class NewTicketModalComponent {
     }
   }
 
+  validateForm(): boolean {
+    this.errors = {
+      title: '',
+      description: '',
+      residentName: '',
+      apartment: ''
+    };
+
+    let isValid = true;
+
+    if (!this.title.trim()) {
+      this.errors.title = 'Informe o título do chamado.';
+      isValid = false;
+    } else if (this.title.trim().length < 5) {
+      this.errors.title = 'O título deve ter pelo menos 5 caracteres.';
+      isValid = false;
+    }
+
+    if (!this.description.trim()) {
+      this.errors.description = 'Descreva o problema encontrado.';
+      isValid = false;
+    } else if (this.description.trim().length < 10) {
+      this.errors.description = 'A descrição deve ter pelo menos 10 caracteres.';
+      isValid = false;
+    }
+
+    if (!this.residentName.trim()) {
+      this.errors.residentName = 'Informe o nome do morador.';
+      isValid = false;
+    }
+
+    if (!this.apartment.trim()) {
+      this.errors.apartment = 'Informe a unidade do morador.';
+      isValid = false;
+    }
+
+    return isValid;
+  }
+
   onSubmit(): void {
+    this.submitted = true;
+
+    if (!this.validateForm()) {
+      return;
+    }
+
     const newTicket: Ticket = {
       id: Date.now(),
-      title: this.title,
-      description: this.description,
-      residentName: this.residentName,
-      apartment: this.apartment,
+      title: this.title.trim(),
+      description: this.description.trim(),
+      residentName: this.residentName.trim(),
+      apartment: this.apartment.trim(),
       status: 'ABERTO',
       createdAt: 'Hoje',
       avatarColor: '#8b5cf6'
