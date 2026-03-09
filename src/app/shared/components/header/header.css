@@ -1,0 +1,55 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 32px;
+  background: white;
+  border-bottom: 1px solid #e6edf4;
+}
+
+.left {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.icon {
+  font-size: 28px;
+}
+
+h1 {
+  font-size: 22px;
+  margin: 0;
+}
+
+p {
+  margin: 0;
+  color: #64748b;
+}
+
+.switch {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.buttons {
+  display: flex;
+  background: #eef2f7;
+  border-radius: 12px;
+  padding: 4px;
+}
+
+button {
+  border: none;
+  background: transparent;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button.active {
+  background: white;
+  color: #4f46e5;
+  font-weight: 600;
+}

@@ -1,0 +1,110 @@
+<div class="modal-overlay" (click)="onClose()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <h2>Novo Chamado</h2>
+        <p>Descreva o problema encontrado</p>
+      </div>
+
+      <button type="button" class="close-btn" (click)="onClose()">×</button>
+    </div>
+
+    <div class="modal-body">
+
+      <div class="field full">
+        <label for="title">Título do Chamado <span class="required">*</span></label>
+        <input
+          id="title"
+          type="text"
+          [(ngModel)]="title"
+          placeholder="Ex: Vazamento no banheiro"
+          [class.invalid]="submitted && !!errors.title"
+        />
+        <small *ngIf="submitted && errors.title" class="error-message">
+          {{ errors.title }}
+        </small>
+      </div>
+
+      <div class="field full">
+        <label for="description">Descrição <span class="required">*</span></label>
+        <textarea
+          id="description"
+          [(ngModel)]="description"
+          placeholder="Descreva o problema em detalhes"
+          rows="6"
+          [class.invalid]="submitted && !!errors.description"
+        ></textarea>
+        <small *ngIf="submitted && errors.description" class="error-message">
+          {{ errors.description }}
+        </small>
+      </div>
+
+      <div class="row">
+        <div class="field half">
+          <label for="residentName">Nome do Morador <span class="required">*</span></label>
+          <input
+            id="residentName"
+            type="text"
+            [(ngModel)]="residentName"
+            placeholder="Ex: João Silva"
+            [class.invalid]="submitted && !!errors.residentName"
+          />
+          <small *ngIf="submitted && errors.residentName" class="error-message">
+            {{ errors.residentName }}
+          </small>
+        </div>
+
+        <div class="field half">
+          <label for="apartment">Unidade <span class="required">*</span></label>
+          <input
+            id="apartment"
+            type="text"
+            [(ngModel)]="apartment"
+            placeholder="Ex: Apto 101"
+            [class.invalid]="submitted && !!errors.apartment"
+          />
+          <small *ngIf="submitted && errors.apartment" class="error-message">
+            {{ errors.apartment }}
+          </small>
+        </div>
+      </div>
+
+      <div class="field full">
+        <label>Foto do Problema <span class="optional">(opcional)</span></label>
+
+        <label class="upload-box" for="fileInput">
+          <input
+            id="fileInput"
+            type="file"
+            accept="image/*"
+            (change)="onFileSelected($event)"
+          />
+
+          <div class="upload-icon">🖼</div>
+          <span class="upload-title">Clique para selecionar uma foto</span>
+          <span class="upload-subtitle">
+            PNG, JPG ou JPEG até 10 MB
+          </span>
+
+          <span *ngIf="selectedFileName" class="file-name">
+            {{ selectedFileName }}
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="secondary-btn" (click)="onClose()">
+        Cancelar
+      </button>
+
+      <button
+        type="button"
+        class="primary-btn"
+        (click)="onSubmit()"
+      >
+        Criar Chamado
+      </button>
+    </div>
+  </div>
+</div>

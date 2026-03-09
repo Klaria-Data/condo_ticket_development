@@ -1,0 +1,41 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  font-size: 18px;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+}
+
+.aberto {
+  color: #e53935;
+  background: #fff3f2;
+  border-color: #f5c7c4;
+}
+
+.em_andamento {
+  color: #d97706;
+  background: #fff8e8;
+  border-color: #f1d386;
+}
+
+.resolvido {
+  color: #15803d;
+  background: #eefdf3;
+  border-color: #b7ebc5;
+}
+
+.cancelado {
+  color: #6b7280;
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
