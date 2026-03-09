@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
 import { Ticket } from '../../../../core/models/ticket.model';
 import { MatIconModule } from '@angular/material/icon';
-import { M } from '@angular/cdk/keycodes';
 
 @Component({
   selector: 'app-tickets-summary',
