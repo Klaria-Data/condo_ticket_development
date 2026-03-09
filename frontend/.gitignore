@@ -1,6 +1,15 @@
 # See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
-# Compiled output
+# Monorepo: Frontend (Angular)
+/frontend/dist
+/frontend/tmp
+/frontend/out-tsc
+/frontend/bazel-out
+/frontend/node_modules
+/frontend/.angular/cache
+/frontend/coverage
+
+# Optional root leftovers before migration completes
 /dist
 /tmp
 /out-tsc
@@ -8,6 +17,10 @@
 
 # Node
 /node_modules
+/.angular/cache
+/coverage
+
+# Node logs
 npm-debug.log
 yarn-error.log
 
@@ -28,6 +41,18 @@ yarn-error.log
 !.vscode/extensions.json
 !.vscode/mcp.json
 .history/*
+
+# Backend (Python/FastAPI)
+/backend/.venv/
+/backend/venv/
+/backend/__pycache__/
+/backend/**/*.pyc
+/backend/.pytest_cache/
+/backend/.mypy_cache/
+/backend/.ruff_cache/
+/backend/.coverage
+/backend/htmlcov/
+/backend/.env
 
 # Miscellaneous
 /.angular/cache
