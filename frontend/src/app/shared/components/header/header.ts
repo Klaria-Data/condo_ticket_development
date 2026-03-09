@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { ViewMode } from '../../../core/models/ticket.model';
 import { CommonModule } from '@angular/common';
 
@@ -10,7 +10,7 @@ import { CommonModule } from '@angular/common';
   styleUrl: './header.css'
 })
 export class AppHeaderComponent {
-  viewMode: ViewMode = 'MORADOR';
+  @Input() viewMode: ViewMode = 'MORADOR';
 
   @Output() viewModeChange = new EventEmitter<ViewMode>();
 

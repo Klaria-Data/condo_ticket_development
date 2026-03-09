@@ -8,6 +8,8 @@ import { CommonModule } from '@angular/common';
 import { AppHeaderComponent } from '../../../../shared/components/header/header';
 import { TicketsService } from '../../../../core/services/tickets.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { HttpErrorResponse } from '@angular/common/http';
+import { TicketsSummaryComponent } from '../../components/tickets-summary/tickets-summary';
 
 @Component({
   selector: 'app-tickets-page',
@@ -19,6 +21,7 @@ import { AuthService } from '../../../../core/services/auth.service';
     PageHeaderComponent,
     NewTicketModalComponent,
     CommonModule,
+    TicketsSummaryComponent
   ],
   templateUrl: './tickets-page.html',
   styleUrls: ['./tickets-page.css']
@@ -40,6 +43,7 @@ export class TicketsPageComponent implements OnInit {
   ngOnInit(): void {
     const user = this.authService.getCurrentUser();
     if (!user) {
+      this.authService.logout();
       return;
     }
 
@@ -70,6 +74,7 @@ export class TicketsPageComponent implements OnInit {
   createTicket(ticket: Ticket): void {
     const user = this.authService.getCurrentUser();
     if (!user) {
+      this.authService.logout();
       return;
     }
 
@@ -87,7 +92,12 @@ export class TicketsPageComponent implements OnInit {
         next: (createdTicket) => {
           this.tickets = [createdTicket, ...this.tickets];
         },
-        error: () => {
+        error: (err: HttpErrorResponse) => {
+          if (err.status === 401 || err.status === 403) {
+            this.authService.logout();
+            return;
+          }
+
           this.errorMessage = 'Falha ao criar chamado no backend.';
         },
       });
@@ -96,6 +106,7 @@ export class TicketsPageComponent implements OnInit {
   private loadTickets(): void {
     const user = this.authService.getCurrentUser();
     if (!user) {
+      this.authService.logout();
       return;
     }
 
@@ -103,7 +114,12 @@ export class TicketsPageComponent implements OnInit {
       next: (tickets) => {
         this.tickets = tickets;
       },
-      error: () => {
+      error: (err: HttpErrorResponse) => {
+        if (err.status === 401 || err.status === 403) {
+          this.authService.logout();
+          return;
+        }
+
         this.errorMessage = 'Falha ao carregar chamados do backend.';
       },
     });

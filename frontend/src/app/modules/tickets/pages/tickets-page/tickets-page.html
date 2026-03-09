@@ -1,9 +1,11 @@
-<app-header (viewModeChange)="onViewModeChange($event)"></app-header>
+<app-header [viewMode]="viewMode" (viewModeChange)="onViewModeChange($event)"></app-header>
 
 <div class="page">
   <main class="content">
-    <p *ngIf="errorMessage" class="backend-error">{{ errorMessage }}</p>
-
+     <app-tickets-summary
+      *ngIf="viewMode === 'SINDICO'"
+      [tickets]="tickets"
+    ></app-tickets-summary>
     <app-page-header
       [viewMode]="viewMode"
       (newTicket)="onNewTicket()"
