@@ -6,6 +6,7 @@ import { TicketFiltersComponent } from '../../components/ticket-filters/ticket-f
 import { PageHeaderComponent } from '../../components/page-header/page-header';
 import { NewTicketModalComponent } from '../../components/new-ticket-modal/new-ticket-modal';
 import { CommonModule } from '@angular/common';
+import { TicketsSummaryComponent } from '../../components/tickets-summary/tickets-summary';
 
 @Component({
   selector: 'app-tickets-page',
@@ -16,6 +17,7 @@ import { CommonModule } from '@angular/common';
     PageHeaderComponent,
     NewTicketModalComponent,
     CommonModule,
+    TicketsSummaryComponent
   ],
   templateUrl: './tickets-page.html',
   styleUrls: ['./tickets-page.css']

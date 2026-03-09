@@ -1,5 +1,9 @@
 <div class="page">
   <main class="content">
+        <app-tickets-summary
+      *ngIf="viewMode === 'SINDICO'"
+      [tickets]="tickets"
+    ></app-tickets-summary>
     <app-page-header
       [viewMode]="viewMode"
       (newTicket)="onNewTicket()"
