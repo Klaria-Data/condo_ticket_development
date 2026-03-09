@@ -49,6 +49,10 @@ class TicketCriacao(BaseModel):
     imagem_url: str | None = Field(default=None, max_length=500)
 
 
+class TicketStatusAtualizacao(BaseModel):
+    status: StatusTicket
+
+
 class TicketResposta(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

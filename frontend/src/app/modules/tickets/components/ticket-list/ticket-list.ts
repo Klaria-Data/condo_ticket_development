@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
-import { Ticket, ViewMode } from '../../../../core/models/ticket.model';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Ticket, TicketStatus, ViewMode } from '../../../../core/models/ticket.model';
 import { TicketCardComponent } from '../ticket-card/ticket-card';
 
 @Component({
@@ -13,4 +13,10 @@ import { TicketCardComponent } from '../ticket-card/ticket-card';
 export class TicketListComponent {
   @Input() tickets: Ticket[] = [];
   @Input() viewMode: ViewMode = 'MORADOR';
+  @Output() statusChange = new EventEmitter<{ ticketId: number; status: TicketStatus }>();
+
+  onStatusChange(event: { ticketId: number; status: TicketStatus }): void {
+    console.log('[TicketList] onStatusChange called:', event);
+    this.statusChange.emit(event);
+  }
 }

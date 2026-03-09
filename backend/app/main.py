@@ -145,3 +145,51 @@ def criar_ticket(
     db.refresh(novo_ticket)
 
     return novo_ticket
+
+
+@app.put("/tickets/{ticket_id}/status", response_model=schemas.TicketResposta)
+def atualizar_status_ticket(
+    ticket_id: int,
+    payload: schemas.TicketStatusAtualizacao,
+    current_user: models.Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    print(f"[Backend] PUT /tickets/{ticket_id}/status called with payload: {payload.status}")
+    print(f"[Backend] User: {current_user.email}, Perfil: {current_user.perfil}")
+    
+    if current_user.perfil != models.PerfilUsuario.ADMIN:
+        print("[Backend] ERROR: User is not ADMIN, returning 403")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas administradores podem atualizar status de tickets",
+        )
+
+    ticket = db.query(models.Ticket).filter(models.Ticket.id == ticket_id).first()
+    if not ticket:
+        print(f"[Backend] ERROR: Ticket {ticket_id} not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket nao encontrado")
+
+    allowed_next_status = {
+        models.StatusTicket.ABERTO: models.StatusTicket.EM_ANDAMENTO,
+        models.StatusTicket.EM_ANDAMENTO: models.StatusTicket.RESOLVIDO,
+        models.StatusTicket.RESOLVIDO: models.StatusTicket.RESOLVIDO,
+    }
+
+    print(f"[Backend] Current ticket status: {ticket.status}")
+    print(f"[Backend] Requested new status: {payload.status}")
+    
+    expected_next = allowed_next_status[ticket.status]
+    if payload.status != expected_next and payload.status != ticket.status:
+        print(f"[Backend] ERROR: Invalid flow. Expected {expected_next}, got {payload.status}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Fluxo invalido de status. Use ABERTO -> EM_ANDAMENTO -> RESOLVIDO",
+        )
+
+    print(f"[Backend] Updating ticket {ticket_id} status to {payload.status}")
+    ticket.status = payload.status
+    db.commit()
+    db.refresh(ticket)
+
+    print(f"[Backend] Ticket {ticket_id} updated successfully")
+    return ticket

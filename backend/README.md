@@ -131,3 +131,64 @@ Tabelas mapeadas:
 - `COMENTARIO_FORUM`
 
 Observacao: `Base.metadata.create_all()` cria estrutura inicial automaticamente ao subir a API.
+
+As tabelas podem ser criadas a partir do sequinte script SQL:
+
+CREATE DATABASE condoticket;
+USE condoticket;
+-- 1. Tabela USUARIO
+CREATE TABLE USUARIO (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(150) NOT NULL COMMENT 'Nome completo do morador/síndico',
+    email VARCHAR(100) NOT NULL UNIQUE COMMENT 'Login único no sistema',
+    senha_hash VARCHAR(255) NOT NULL COMMENT 'Senha encriptada (Bcrypt)',
+    unidade VARCHAR(50) NOT NULL COMMENT 'Identificação (Ex: Apt 101 Bloco B)',
+    perfil ENUM('ADMIN', 'MORADOR') NOT NULL DEFAULT 'MORADOR' COMMENT 'Define permissões',
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Data de registo no sistema'
+);
+
+-- 2. Tabela TICKET
+CREATE TABLE TICKET (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NOT NULL COMMENT 'Quem abriu o ticket',
+    titulo VARCHAR(100) NOT NULL COMMENT 'Resumo curto do problema',
+    descricao TEXT NOT NULL COMMENT 'Detalhamento completo da ocorrência',
+    imagem_url VARCHAR(255) DEFAULT NULL COMMENT 'Link da imagem salva no S3 (Opcional)',
+    status ENUM('ABERTO', 'EM_ANDAMENTO', 'RESOLVIDO') NOT NULL DEFAULT 'ABERTO' COMMENT 'Fluxo de status',
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Quando foi aberto',
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Última mudança',
+    FOREIGN KEY (usuario_id) REFERENCES USUARIO(id) ON DELETE CASCADE
+);
+
+-- 3. Tabela POSTAGEM_FORUM
+CREATE TABLE POSTAGEM_FORUM (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NOT NULL COMMENT 'Quem criou o tópico',
+    titulo VARCHAR(150) NOT NULL COMMENT 'Assunto principal',
+    conteudo TEXT NOT NULL COMMENT 'Texto da postagem',
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Data da publicação',
+    FOREIGN KEY (usuario_id) REFERENCES USUARIO(id) ON DELETE CASCADE
+);
+
+-- 4. Tabela COMENTARIO_TICKET
+CREATE TABLE COMENTARIO_TICKET (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    ticket_id INT NOT NULL COMMENT 'Vínculo com o ticket',
+    usuario_id INT NOT NULL COMMENT 'Autor do comentário',
+    mensagem TEXT NOT NULL COMMENT 'Conteúdo da resposta',
+    data_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Data e hora da mensagem',
+    FOREIGN KEY (ticket_id) REFERENCES TICKET(id) ON DELETE CASCADE,
+    FOREIGN KEY (usuario_id) REFERENCES USUARIO(id) ON DELETE CASCADE
+);
+
+-- 5. Tabela COMENTARIO_FORUM
+CREATE TABLE COMENTARIO_FORUM (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    postagem_id INT NOT NULL COMMENT 'Vínculo com o tópico',
+    usuario_id INT NOT NULL COMMENT 'Quem respondeu',
+    conteudo TEXT NOT NULL COMMENT 'Texto da resposta',
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Data da resposta',
+    FOREIGN KEY (postagem_id) REFERENCES POSTAGEM_FORUM(id) ON DELETE CASCADE,
+    FOREIGN KEY (usuario_id) REFERENCES USUARIO(id) ON DELETE CASCADE
+);
+

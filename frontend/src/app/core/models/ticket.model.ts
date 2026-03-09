@@ -11,5 +11,7 @@ export interface Ticket {
   apartment: string;
   createdAt: string;
   updatedAt?: string;
+  createdAtRaw?: string;
+  updatedAtRaw?: string;
   avatarColor: string;
 }

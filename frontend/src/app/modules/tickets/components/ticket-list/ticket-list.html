@@ -3,6 +3,7 @@
     *ngFor="let ticket of tickets"
     [ticket]="ticket"
     [viewMode]="viewMode"
+    (statusChange)="onStatusChange($event)"
   />
 </section>
 

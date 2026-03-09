@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { Ticket, TicketFilter, ViewMode } from '../../../../core/models/ticket.model';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { Ticket, TicketFilter, TicketStatus, ViewMode } from '../../../../core/models/ticket.model';
 import { TicketListComponent } from '../../components/ticket-list/ticket-list';
 import { TicketFiltersComponent } from '../../components/ticket-filters/ticket-filters';
 import { PageHeaderComponent } from '../../components/page-header/page-header';
@@ -38,6 +38,7 @@ export class TicketsPageComponent implements OnInit {
   constructor(
     private readonly ticketsService: TicketsService,
     private readonly authService: AuthService,
+    private readonly cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -89,8 +90,10 @@ export class TicketsPageComponent implements OnInit {
         user.unidade,
       )
       .subscribe({
-        next: (createdTicket) => {
-          this.tickets = [createdTicket, ...this.tickets];
+        next: () => {
+          this.errorMessage = '';
+          this.loadTickets();
+          this.cdr.detectChanges();
         },
         error: (err: HttpErrorResponse) => {
           if (err.status === 401 || err.status === 403) {
@@ -99,6 +102,45 @@ export class TicketsPageComponent implements OnInit {
           }
 
           this.errorMessage = 'Falha ao criar chamado no backend.';
+          this.cdr.detectChanges();
+        },
+      });
+  }
+
+  updateTicketStatus(event: { ticketId: number; status: TicketStatus }): void {
+    console.log('[TicketsPage] updateTicketStatus called:', event);
+    
+    const user = this.authService.getCurrentUser();
+    if (!user) {
+      console.log('[TicketsPage] No user found, logging out');
+      this.authService.logout();
+      return;
+    }
+
+    console.log('[TicketsPage] Calling ticketsService.updateTicketStatus');
+    this.ticketsService
+      .updateTicketStatus(event.ticketId, event.status, user.nome, user.unidade)
+      .subscribe({
+        next: () => {
+          console.log('[TicketsPage] Status update successful');
+          this.errorMessage = '';
+          this.loadTickets();
+          this.cdr.detectChanges();
+        },
+        error: (err: HttpErrorResponse) => {
+          console.error('[TicketsPage] Status update error:', err);
+          
+          if (err.status === 401 || err.status === 403) {
+            this.authService.logout();
+            return;
+          }
+
+          this.errorMessage =
+            err.status === 400
+              ? 'Transicao de status invalida. Siga ABERTO -> EM_ANDAMENTO -> RESOLVIDO.'
+              : 'Falha ao atualizar status do ticket.';
+          this.loadTickets();
+          this.cdr.detectChanges();
         },
       });
   }
@@ -113,6 +155,7 @@ export class TicketsPageComponent implements OnInit {
     this.ticketsService.listTickets(user.nome, user.unidade).subscribe({
       next: (tickets) => {
         this.tickets = tickets;
+        this.cdr.detectChanges();
       },
       error: (err: HttpErrorResponse) => {
         if (err.status === 401 || err.status === 403) {
@@ -121,6 +164,7 @@ export class TicketsPageComponent implements OnInit {
         }
 
         this.errorMessage = 'Falha ao carregar chamados do backend.';
+        this.cdr.detectChanges();
       },
     });
   }

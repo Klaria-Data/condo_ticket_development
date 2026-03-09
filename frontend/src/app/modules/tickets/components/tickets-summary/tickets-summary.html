@@ -3,7 +3,7 @@
     <div class="summary-content">
       <span class="summary-label">Total de Chamados</span>
       <h3>{{ total }}</h3>
-      <p class="summary-trend positive">↑ 8% este mês</p>
+      <p class="summary-trend" [ngClass]="totalTrendClass">{{ totalTrendText }}</p>
     </div>
 
     <mat-icon>assignment</mat-icon>
@@ -13,7 +13,7 @@
     <div class="summary-content">
       <span class="summary-label">Abertos</span>
       <h3>{{ open }}</h3>
-      <p class="summary-trend negative">↑ 15% esta semana</p>
+      <p class="summary-trend" [ngClass]="openTrendClass">{{ openTrendText }}</p>
     </div>
 
     <mat-icon color="warn">error_outline</mat-icon>
@@ -23,7 +23,7 @@
     <div class="summary-content">
       <span class="summary-label">Em Andamento</span>
       <h3>{{ inProgress }}</h3>
-      <p class="summary-trend neutral">↓ 5% esta semana</p>
+      <p class="summary-trend" [ngClass]="inProgressTrendClass">{{ inProgressTrendText }}</p>
     </div>
 
     <mat-icon>schedule</mat-icon>
@@ -33,7 +33,7 @@
     <div class="summary-content">
       <span class="summary-label">Resolvidos</span>
       <h3>{{ resolved }}</h3>
-      <p class="summary-trend positive">↑ 22% esta semana</p>
+      <p class="summary-trend" [ngClass]="resolvedTrendClass">{{ resolvedTrendText }}</p>
     </div>
 
     <mat-icon color="primary">task_alt</mat-icon>

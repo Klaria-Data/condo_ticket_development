@@ -21,6 +21,7 @@
     <app-ticket-list
       [tickets]="filteredTickets"
       [viewMode]="viewMode"
+      (statusChange)="updateTicketStatus($event)"
     />
   </main>
 

@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 
-import { Ticket } from '../models/ticket.model';
+import { Ticket, TicketStatus } from '../models/ticket.model';
 
 interface ApiTicket {
   id: number;
@@ -43,6 +43,19 @@ export class TicketsService {
     );
   }
 
+  updateTicketStatus(
+    ticketId: number,
+    status: TicketStatus,
+    residentName: string,
+    apartment: string,
+  ): Observable<Ticket> {
+    console.log('[TicketsService] updateTicketStatus called:', { ticketId, status, url: `${this.apiBaseUrl}/tickets/${ticketId}/status` });
+    
+    return this.http
+      .put<ApiTicket>(`${this.apiBaseUrl}/tickets/${ticketId}/status`, { status })
+      .pipe(map((ticket) => this.toUiTicket(ticket, residentName, apartment)));
+  }
+
   private toUiTicket(ticket: ApiTicket, residentName: string, apartment: string): Ticket {
     return {
       id: ticket.id,
@@ -53,6 +66,8 @@ export class TicketsService {
       apartment,
       createdAt: this.toShortDate(ticket.data_criacao),
       updatedAt: this.toShortDate(ticket.data_atualizacao),
+      createdAtRaw: ticket.data_criacao,
+      updatedAtRaw: ticket.data_atualizacao,
       avatarColor: '#10bcd6',
     };
   }
