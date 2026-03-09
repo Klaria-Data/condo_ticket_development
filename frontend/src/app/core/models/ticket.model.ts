@@ -1,4 +1,4 @@
-export type TicketStatus = 'ABERTO' | 'EM_ANDAMENTO' | 'RESOLVIDO' | 'CANCELADO';
+export type TicketStatus = 'ABERTO' | 'EM_ANDAMENTO' | 'RESOLVIDO';
 export type ViewMode = 'MORADOR' | 'SINDICO';
 export type TicketFilter = 'TODOS' | TicketStatus;
 

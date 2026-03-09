@@ -1,5 +1,9 @@
+<app-header (viewModeChange)="onViewModeChange($event)"></app-header>
+
 <div class="page">
   <main class="content">
+    <p *ngIf="errorMessage" class="backend-error">{{ errorMessage }}</p>
+
     <app-page-header
       [viewMode]="viewMode"
       (newTicket)="onNewTicket()"

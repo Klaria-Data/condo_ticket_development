@@ -1,16 +1,19 @@
-import { Component, Input } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Ticket, TicketFilter, ViewMode } from '../../../../core/models/ticket.model';
-import { TICKETS_MOCK } from '../../../../mocks/tickets.mock';
 import { TicketListComponent } from '../../components/ticket-list/ticket-list';
 import { TicketFiltersComponent } from '../../components/ticket-filters/ticket-filters';
 import { PageHeaderComponent } from '../../components/page-header/page-header';
 import { NewTicketModalComponent } from '../../components/new-ticket-modal/new-ticket-modal';
 import { CommonModule } from '@angular/common';
+import { AppHeaderComponent } from '../../../../shared/components/header/header';
+import { TicketsService } from '../../../../core/services/tickets.service';
+import { AuthService } from '../../../../core/services/auth.service';
 
 @Component({
   selector: 'app-tickets-page',
   standalone: true,
   imports: [
+    AppHeaderComponent,
     TicketListComponent,
     TicketFiltersComponent,
     PageHeaderComponent,
@@ -20,13 +23,33 @@ import { CommonModule } from '@angular/common';
   templateUrl: './tickets-page.html',
   styleUrls: ['./tickets-page.css']
 })
-export class TicketsPageComponent {
-  @Input() viewMode: ViewMode = 'MORADOR';
+export class TicketsPageComponent implements OnInit {
+  viewMode: ViewMode = 'MORADOR';
 
-  tickets: Ticket[] = TICKETS_MOCK;
+  tickets: Ticket[] = [];
   search = '';
   activeFilter: TicketFilter = 'TODOS';
   isNewTicketModalOpen = false;
+  errorMessage = '';
+
+  constructor(
+    private readonly ticketsService: TicketsService,
+    private readonly authService: AuthService,
+  ) {}
+
+  ngOnInit(): void {
+    const user = this.authService.getCurrentUser();
+    if (!user) {
+      return;
+    }
+
+    this.viewMode = user.perfil === 'ADMIN' ? 'SINDICO' : 'MORADOR';
+    this.loadTickets();
+  }
+
+  onViewModeChange(mode: ViewMode): void {
+    this.viewMode = mode;
+  }
 
   onSearchChange(value: string): void {
     this.search = value;
@@ -37,7 +60,6 @@ export class TicketsPageComponent {
   }
 
   onNewTicket(): void {
-    alert('clicou');
     this.isNewTicketModalOpen = true;
   }
 
@@ -46,7 +68,45 @@ export class TicketsPageComponent {
   }
 
   createTicket(ticket: Ticket): void {
-    this.tickets = [ticket, ...this.tickets];
+    const user = this.authService.getCurrentUser();
+    if (!user) {
+      return;
+    }
+
+    this.ticketsService
+      .createTicket(
+        {
+          titulo: ticket.title,
+          descricao: ticket.description,
+          imagem_url: null,
+        },
+        user.nome,
+        user.unidade,
+      )
+      .subscribe({
+        next: (createdTicket) => {
+          this.tickets = [createdTicket, ...this.tickets];
+        },
+        error: () => {
+          this.errorMessage = 'Falha ao criar chamado no backend.';
+        },
+      });
+  }
+
+  private loadTickets(): void {
+    const user = this.authService.getCurrentUser();
+    if (!user) {
+      return;
+    }
+
+    this.ticketsService.listTickets(user.nome, user.unidade).subscribe({
+      next: (tickets) => {
+        this.tickets = tickets;
+      },
+      error: () => {
+        this.errorMessage = 'Falha ao carregar chamados do backend.';
+      },
+    });
   }
 
   get filteredTickets(): Ticket[] {

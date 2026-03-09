@@ -37,8 +37,6 @@ export class TicketFiltersComponent {
         return 'Em Andamento';
       case 'RESOLVIDO':
         return 'Resolvidos';
-      case 'CANCELADO':
-        return 'Cancelados';
       default:
         return filter;
     }

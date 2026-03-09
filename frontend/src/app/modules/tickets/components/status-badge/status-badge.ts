@@ -20,8 +20,6 @@ export class StatusBadgeComponent {
         return 'Em Andamento';
       case 'RESOLVIDO':
         return 'Resolvido';
-      case 'CANCELADO':
-        return 'Cancelado';
       default:
         return this.status;
     }
