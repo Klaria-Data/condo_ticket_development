@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { Ticket, TicketStatus, ViewMode } from '../../../../core/models/ticket.model';
 import { getInitials } from '../../../../utils/initials.util';
 import { StatusBadgeComponent } from '../status-badge/status-badge';
+import { TicketCommentsComponent } from '../ticket-comments/ticket-comments';
 
 @Component({
   selector: 'app-ticket-card',
   standalone: true,
-  imports: [CommonModule, FormsModule, StatusBadgeComponent],
+  imports: [CommonModule, FormsModule, StatusBadgeComponent, TicketCommentsComponent],
   templateUrl: './ticket-card.html',
   styleUrl: './ticket-card.css'
 })
@@ -16,6 +17,8 @@ export class TicketCardComponent {
   @Input({ required: true }) ticket!: Ticket;
   @Input() viewMode: ViewMode = 'MORADOR';
   @Output() statusChange = new EventEmitter<{ ticketId: number; status: TicketStatus }>();
+
+  showComments = false;
 
   get initials(): string {
     return getInitials(this.ticket.residentName);
@@ -31,5 +34,9 @@ export class TicketCardComponent {
 
     console.log('[TicketCard] Emitting statusChange event');
     this.statusChange.emit({ ticketId: this.ticket.id, status: newStatus });
+  }
+
+  toggleComments(): void {
+    this.showComments = !this.showComments;
   }
 }

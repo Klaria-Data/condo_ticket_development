@@ -128,6 +128,19 @@ npm start
 
 - App: `http://localhost:4200`
 
+### Execute com Docker Compose
+
+```bash
+docker compose up --build
+```
+
+Isso inicia:
+- `backend` em `http://127.0.0.1:8000`
+- `frontend` em `http://localhost:4200`
+- `mysql` em `mysql:8.0` com banco `condoticket`
+
+> O backend e o frontend são serviços independentes conectados via HTTP.
+
 ## Autenticacao e Permissoes
 
 Perfis:

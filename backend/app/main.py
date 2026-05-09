@@ -193,3 +193,55 @@ def atualizar_status_ticket(
 
     print(f"[Backend] Ticket {ticket_id} updated successfully")
     return ticket
+
+
+@app.get("/tickets/{ticket_id}/comentarios", response_model=list[schemas.ComentarioTicketResposta])
+def listar_comentarios_ticket(
+    ticket_id: int,
+    current_user: models.Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Lista todos os comentários de um ticket.
+    Qualquer usuário autenticado pode ver os comentários.
+    """
+    ticket = db.query(models.Ticket).filter(models.Ticket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket nao encontrado")
+
+    comentarios = (
+        db.query(models.ComentarioTicket)
+        .filter(models.ComentarioTicket.ticket_id == ticket_id)
+        .order_by(models.ComentarioTicket.data_envio.asc())
+        .all()
+    )
+
+    return [schemas.ComentarioTicketResposta.from_orm_with_usuario(c) for c in comentarios]
+
+
+@app.post("/tickets/{ticket_id}/comentarios", response_model=schemas.ComentarioTicketResposta, status_code=status.HTTP_201_CREATED)
+def criar_comentario_ticket(
+    ticket_id: int,
+    payload: schemas.ComentarioTicketCriacao,
+    current_user: models.Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Cria um novo comentário em um ticket.
+    Qualquer usuário autenticado (ADMIN ou MORADOR) pode criar comentários.
+    """
+    ticket = db.query(models.Ticket).filter(models.Ticket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket nao encontrado")
+
+    novo_comentario = models.ComentarioTicket(
+        ticket_id=ticket_id,
+        usuario_id=current_user.id,
+        mensagem=payload.mensagem,
+    )
+
+    db.add(novo_comentario)
+    db.commit()
+    db.refresh(novo_comentario)
+
+    return schemas.ComentarioTicketResposta.from_orm_with_usuario(novo_comentario)

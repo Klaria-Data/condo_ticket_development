@@ -1,0 +1,51 @@
+<div class="comments-container">
+  <h3>Comentários do Síndico</h3>
+
+  <!-- Lista de comentários -->
+  <div class="comments-list">
+    <div *ngIf="loading" class="loading">
+      Carregando comentários...
+    </div>
+
+    <div *ngIf="!loading && comments.length === 0" class="no-comments">
+      Nenhum comentário ainda.
+    </div>
+
+    <div *ngFor="let comment of comments" class="comment">
+      <div class="comment-header">
+        <div class="comment-avatar">{{ getInitials(comment.usuario_nome) }}</div>
+        <div class="comment-info">
+          <strong>{{ comment.usuario_nome || 'Anônimo' }}</strong>
+          <span class="comment-date">{{ comment.data_envio | date: 'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+      </div>
+      <div class="comment-body">
+        {{ comment.mensagem }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulário para criar comentário (qualquer usuário autenticado) -->
+  <div *ngIf="isAuthenticated" class="comment-form">
+    <form [formGroup]="commentForm" (ngSubmit)="onSubmit()">
+      <textarea
+        formControlName="mensagem"
+        placeholder="Escreva um comentário sobre este ticket..."
+        rows="3"
+        class="comment-textarea"
+      ></textarea>
+
+      <div *ngIf="errorMessage" class="error-message">
+        {{ errorMessage }}
+      </div>
+
+      <button
+        type="submit"
+        [disabled]="!commentForm.valid"
+        class="submit-button"
+      >
+        Enviar Comentário
+      </button>
+    </form>
+  </div>
+</div>

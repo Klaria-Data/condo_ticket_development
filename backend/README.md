@@ -52,6 +52,14 @@ py -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - API: `http://127.0.0.1:8000`
 - Docs: `http://127.0.0.1:8000/docs`
 
+### Executar com Docker
+
+```bash
+docker compose up --build
+```
+
+Quando usar com Docker Compose, o serviço `backend` é iniciado em `http://127.0.0.1:8000`.
+
 ## Endpoints
 
 ### `POST /registro`

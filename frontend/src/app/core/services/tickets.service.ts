@@ -28,9 +28,58 @@ export class TicketsService {
   constructor(private readonly http: HttpClient) {}
 
   listTickets(residentName: string, apartment: string): Observable<Ticket[]> {
-    return this.http.get<ApiTicket[]>(`${this.apiBaseUrl}/tickets`).pipe(
-      map((tickets) => tickets.map((ticket) => this.toUiTicket(ticket, residentName, apartment))),
-    );
+    // MOCK: Retorna dados fake para testar sem backend
+    const mockTickets: Ticket[] = [
+      {
+        id: 1,
+        title: 'Vazamento no banheiro',
+        description: 'Há um vazamento contínuo na torneira do banheiro principal',
+        status: 'ABERTO',
+        residentName,
+        apartment,
+        createdAt: '09 mai',
+        updatedAt: '09 mai',
+        createdAtRaw: new Date().toISOString(),
+        updatedAtRaw: new Date().toISOString(),
+        avatarColor: '#10bcd6',
+      },
+      {
+        id: 2,
+        title: 'Lâmpada queimada no corredor',
+        description: 'A lâmpada do corredor do terceiro andar queimou',
+        status: 'EM_ANDAMENTO',
+        residentName,
+        apartment,
+        createdAt: '08 mai',
+        updatedAt: '08 mai',
+        createdAtRaw: new Date().toISOString(),
+        updatedAtRaw: new Date().toISOString(),
+        avatarColor: '#ffa726',
+      },
+      {
+        id: 3,
+        title: 'Pintura da fachada',
+        description: 'Necessário repintar a fachada do prédio',
+        status: 'RESOLVIDO',
+        residentName,
+        apartment,
+        createdAt: '07 mai',
+        updatedAt: '07 mai',
+        createdAtRaw: new Date().toISOString(),
+        updatedAtRaw: new Date().toISOString(),
+        avatarColor: '#66bb6a',
+      },
+    ];
+    
+    return new Observable((observer) => {
+      observer.next(mockTickets);
+      observer.complete();
+    });
+    
+    // DESCOMENTE para usar a API real:
+    // return this.http.get<ApiTicket[]>(`${this.apiBaseUrl}/tickets`).pipe(
+    //   map((tickets) => tickets.map((ticket) => this.toUiTicket(ticket, residentName, apartment))),
+    // );
   }
 
   createTicket(

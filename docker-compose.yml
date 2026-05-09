@@ -1,0 +1,34 @@
+version: '3.9'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - '8000:8000'
+    env_file:
+      - ./backend/.env.example
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_EXPIRE_MINUTES=${JWT_EXPIRE_MINUTES:-60}
+      - CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS:-http://localhost:4200,http://127.0.0.1:4200}
+
+  frontend:
+    build: ./frontend
+    ports:
+      - '4200:4200'
+    depends_on:
+      - backend
+
+  mysql:
+    image: mysql:8.0
+    ports:
+      - '3306:3306'
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=condoticket
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+volumes:
+  mysql-data:

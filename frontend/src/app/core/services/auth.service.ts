@@ -18,24 +18,41 @@ export class AuthService {
   ) {}
 
   login(payload: LoginRequest): Observable<AuthUser> {
-    return this.http.post<LoginResponse>(`${this.apiBaseUrl}/login`, payload).pipe(
-      tap((response) => {
-        localStorage.setItem(this.tokenKey, response.access_token);
-        const user: AuthUser = {
-          id: response.usuario_id,
-          nome: response.nome,
-          unidade: response.unidade,
-          perfil: response.perfil,
-        };
-        localStorage.setItem(this.userKey, JSON.stringify(user));
-      }),
-      map((response) => ({
-        id: response.usuario_id,
-        nome: response.nome,
-        unidade: response.unidade,
-        perfil: response.perfil,
-      })),
-    );
+    // MOCK: Retorna dados fake para testar as telas sem backend
+    const mockUser: AuthUser = {
+      id: 1,
+      nome: 'João Silva',
+      unidade: '101',
+      perfil: 'ADMIN',
+    };
+    
+    localStorage.setItem(this.tokenKey, 'mock-token-12345');
+    localStorage.setItem(this.userKey, JSON.stringify(mockUser));
+    
+    return new Observable((observer) => {
+      observer.next(mockUser);
+      observer.complete();
+    });
+    
+    // DESCOMENTE para usar a API real:
+    // return this.http.post<LoginResponse>(`${this.apiBaseUrl}/login`, payload).pipe(
+    //   tap((response) => {
+    //     localStorage.setItem(this.tokenKey, response.access_token);
+    //     const user: AuthUser = {
+    //       id: response.usuario_id,
+    //       nome: response.nome,
+    //       unidade: response.unidade,
+    //       perfil: response.perfil,
+    //     };
+    //     localStorage.setItem(this.userKey, JSON.stringify(user));
+    //   }),
+    //   map((response) => ({
+    //     id: response.usuario_id,
+    //     nome: response.nome,
+    //     unidade: response.unidade,
+    //     perfil: response.perfil,
+    //   })),
+    // );
   }
 
   logout(): void {

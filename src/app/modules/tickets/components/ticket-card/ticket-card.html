@@ -44,16 +44,6 @@
           ✔ Atualizado {{ ticket.updatedAt }}
         </span>
       </div>
-
-      <!-- Botão para expandir comentários -->
-      <button class="comments-toggle-button" (click)="toggleComments()">
-        {{ showComments ? '▼ Ocultar Comentários' : '► Ver Comentários' }}
-      </button>
     </div>
-  </div>
-
-  <!-- Seção de comentários (expandível) -->
-  <div *ngIf="showComments" class="comments-section">
-    <app-ticket-comments [ticketId]="ticket.id"></app-ticket-comments>
   </div>
 </article>
