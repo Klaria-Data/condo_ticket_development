@@ -1,5 +1,5 @@
 <div class="comments-container">
-  <h3>Comentários do Síndico</h3>
+  <h3>Comentários do Ticket</h3>
 
   <!-- Lista de comentários -->
   <div class="comments-list">
@@ -8,7 +8,7 @@
     </div>
 
     <div *ngIf="!loading && comments.length === 0" class="no-comments">
-      Nenhum comentário ainda.
+      Nenhum comentário ainda. Seja o primeiro a comentar!
     </div>
 
     <div *ngFor="let comment of comments" class="comment">
@@ -19,13 +19,40 @@
           <span class="comment-date">{{ comment.data_envio | date: 'dd/MM/yyyy HH:mm' }}</span>
         </div>
       </div>
-      <div class="comment-body">
+
+      <!-- Modo de visualização -->
+      <div *ngIf="editingCommentId !== comment.id" class="comment-body">
         {{ comment.mensagem }}
+      </div>
+
+      <!-- Modo de edição inline -->
+      <div *ngIf="editingCommentId === comment.id" class="comment-edit">
+        <textarea
+          [(ngModel)]="editingMessage"
+          class="comment-textarea"
+          rows="3"
+          maxlength="2000"
+        ></textarea>
+        <div class="comment-edit-actions">
+          <button (click)="saveEdit(comment)" class="btn-save">Salvar</button>
+          <button (click)="cancelEdit()" class="btn-cancel">Cancelar</button>
+        </div>
+      </div>
+
+      <!-- Ações (visíveis apenas para o autor do comentário) -->
+      <div *ngIf="editingCommentId !== comment.id && isOwnComment(comment)" class="comment-actions">
+        <button (click)="startEdit(comment)" class="btn-link">Editar</button>
+        <button (click)="deleteComment(comment.id)" class="btn-link btn-danger">Excluir</button>
       </div>
     </div>
   </div>
 
-  <!-- Formulário para criar comentário (qualquer usuário autenticado) -->
+  <!-- Mensagem de erro global -->
+  <div *ngIf="errorMessage" class="error-message">
+    {{ errorMessage }}
+  </div>
+
+  <!-- Formulário para novo comentário -->
   <div *ngIf="isAuthenticated" class="comment-form">
     <form [formGroup]="commentForm" (ngSubmit)="onSubmit()">
       <textarea
@@ -34,10 +61,6 @@
         rows="3"
         class="comment-textarea"
       ></textarea>
-
-      <div *ngIf="errorMessage" class="error-message">
-        {{ errorMessage }}
-      </div>
 
       <button
         type="submit"

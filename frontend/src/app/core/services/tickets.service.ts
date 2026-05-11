@@ -3,7 +3,9 @@ import { Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 
 import { Ticket, TicketStatus } from '../models/ticket.model';
+import { environment } from '../../../environments/environment';
 
+/** Estrutura de um ticket retornada pela API (snake_case). */
 interface ApiTicket {
   id: number;
   usuario_id: number;
@@ -13,106 +15,67 @@ interface ApiTicket {
   status: 'ABERTO' | 'EM_ANDAMENTO' | 'RESOLVIDO';
   data_criacao: string;
   data_atualizacao: string;
+  usuario_nome: string | null;
+  unidade: string | null;
 }
 
+/** Payload para criar um novo ticket. */
 export interface CreateTicketPayload {
   titulo: string;
   descricao: string;
   imagem_url?: string | null;
 }
 
+/**
+ * Serviço de tickets — lista, cria e atualiza status dos chamados de suporte.
+ *
+ * Toda comunicação usa o token JWT injetado automaticamente pelo AuthInterceptor.
+ */
 @Injectable({ providedIn: 'root' })
 export class TicketsService {
-  private readonly apiBaseUrl = 'http://127.0.0.1:8000';
+  private readonly apiBaseUrl = environment.apiUrl;
 
   constructor(private readonly http: HttpClient) {}
 
-  listTickets(residentName: string, apartment: string): Observable<Ticket[]> {
-    // MOCK: Retorna dados fake para testar sem backend
-    const mockTickets: Ticket[] = [
-      {
-        id: 1,
-        title: 'Vazamento no banheiro',
-        description: 'Há um vazamento contínuo na torneira do banheiro principal',
-        status: 'ABERTO',
-        residentName,
-        apartment,
-        createdAt: '09 mai',
-        updatedAt: '09 mai',
-        createdAtRaw: new Date().toISOString(),
-        updatedAtRaw: new Date().toISOString(),
-        avatarColor: '#10bcd6',
-      },
-      {
-        id: 2,
-        title: 'Lâmpada queimada no corredor',
-        description: 'A lâmpada do corredor do terceiro andar queimou',
-        status: 'EM_ANDAMENTO',
-        residentName,
-        apartment,
-        createdAt: '08 mai',
-        updatedAt: '08 mai',
-        createdAtRaw: new Date().toISOString(),
-        updatedAtRaw: new Date().toISOString(),
-        avatarColor: '#ffa726',
-      },
-      {
-        id: 3,
-        title: 'Pintura da fachada',
-        description: 'Necessário repintar a fachada do prédio',
-        status: 'RESOLVIDO',
-        residentName,
-        apartment,
-        createdAt: '07 mai',
-        updatedAt: '07 mai',
-        createdAtRaw: new Date().toISOString(),
-        updatedAtRaw: new Date().toISOString(),
-        avatarColor: '#66bb6a',
-      },
-    ];
-    
-    return new Observable((observer) => {
-      observer.next(mockTickets);
-      observer.complete();
-    });
-    
-    // DESCOMENTE para usar a API real:
-    // return this.http.get<ApiTicket[]>(`${this.apiBaseUrl}/tickets`).pipe(
-    //   map((tickets) => tickets.map((ticket) => this.toUiTicket(ticket, residentName, apartment))),
-    // );
-  }
-
-  createTicket(
-    payload: CreateTicketPayload,
-    residentName: string,
-    apartment: string,
-  ): Observable<Ticket> {
-    return this.http.post<ApiTicket>(`${this.apiBaseUrl}/tickets`, payload).pipe(
-      map((ticket) => this.toUiTicket(ticket, residentName, apartment)),
+  /**
+   * Lista todos os tickets visíveis para o usuário autenticado.
+   * ADMIN vê todos; MORADOR vê apenas os seus.
+   */
+  listTickets(): Observable<Ticket[]> {
+    return this.http.get<ApiTicket[]>(`${this.apiBaseUrl}/tickets`).pipe(
+      map((tickets) => tickets.map((ticket) => this.toUiTicket(ticket))),
     );
   }
 
-  updateTicketStatus(
-    ticketId: number,
-    status: TicketStatus,
-    residentName: string,
-    apartment: string,
-  ): Observable<Ticket> {
-    console.log('[TicketsService] updateTicketStatus called:', { ticketId, status, url: `${this.apiBaseUrl}/tickets/${ticketId}/status` });
-    
-    return this.http
-      .put<ApiTicket>(`${this.apiBaseUrl}/tickets/${ticketId}/status`, { status })
-      .pipe(map((ticket) => this.toUiTicket(ticket, residentName, apartment)));
+  /**
+   * Cria um novo ticket de suporte.
+   * O ticket sempre inicia com status ABERTO.
+   */
+  createTicket(payload: CreateTicketPayload): Observable<Ticket> {
+    return this.http.post<ApiTicket>(`${this.apiBaseUrl}/tickets`, payload).pipe(
+      map((ticket) => this.toUiTicket(ticket)),
+    );
   }
 
-  private toUiTicket(ticket: ApiTicket, residentName: string, apartment: string): Ticket {
+  /**
+   * Atualiza o status de um ticket seguindo o fluxo ABERTO → EM_ANDAMENTO → RESOLVIDO.
+   * Apenas usuários com perfil ADMIN podem executar esta ação.
+   */
+  updateTicketStatus(ticketId: number, status: TicketStatus): Observable<Ticket> {
+    return this.http
+      .put<ApiTicket>(`${this.apiBaseUrl}/tickets/${ticketId}/status`, { status })
+      .pipe(map((ticket) => this.toUiTicket(ticket)));
+  }
+
+  /** Converte um ticket no formato da API para o formato usado pela UI. */
+  private toUiTicket(ticket: ApiTicket): Ticket {
     return {
       id: ticket.id,
       title: ticket.titulo,
       description: ticket.descricao,
       status: ticket.status,
-      residentName,
-      apartment,
+      residentName: ticket.usuario_nome ?? 'Desconhecido',
+      apartment: ticket.unidade ?? '---',
       createdAt: this.toShortDate(ticket.data_criacao),
       updatedAt: this.toShortDate(ticket.data_atualizacao),
       createdAtRaw: ticket.data_criacao,
@@ -121,6 +84,7 @@ export class TicketsService {
     };
   }
 
+  /** Formata uma data ISO para exibição curta (ex: "09 mai"). */
   private toShortDate(rawDate: string): string {
     const date = new Date(rawDate);
     return date.toLocaleDateString('pt-BR', {

@@ -1,239 +1,274 @@
 # CondoTicket
 
-Sistema de gestao de condominios com abertura e acompanhamento de chamados.
+Sistema de gestão de condomínios com abertura, acompanhamento e chat de chamados de suporte.
 
-Repositorio em formato monorepo com:
-- `frontend/`: SPA Angular 21
-- `backend/`: API REST FastAPI + SQLAlchemy + MySQL + JWT
+Monorepo com arquitetura de microsserviços:
+- `services/auth/` — autenticação e emissão de tokens JWT
+- `services/tickets/` — gestão de tickets de suporte
+- `services/comments/` — chat/comentários dos tickets
+- `services/shared/` — modelos e utilitários compartilhados
+- `frontend/` — SPA Angular 21
+- `nginx/` — API Gateway (roteamento entre microsserviços)
 
-## Sumario
-
-- [Arquitetura](#arquitetura)
-- [Estrutura do Projeto](#estrutura-do-projeto)
-- [Tecnologias](#tecnologias)
-- [Pre-requisitos](#pre-requisitos)
-- [Configuracao Rapida](#configuracao-rapida)
-- [Como Rodar](#como-rodar)
-- [Autenticacao e Permissoes](#autenticacao-e-permissoes)
-- [API](#api)
-- [Fluxo do Frontend](#fluxo-do-frontend)
-- [Comandos Uteis](#comandos-uteis)
-- [Troubleshooting](#troubleshooting)
+---
 
 ## Arquitetura
 
-O projeto segue arquitetura cliente-servidor:
+```
+Browser (Angular :4200)
+        │
+        │  http://localhost:8000
+        ▼
+┌─────────────────────────────────────────────────────────┐
+│                  nginx  (API Gateway)                   │
+│                      porta 8000                         │
+└──────────┬────────────────┬────────────────┬────────────┘
+           │                │                │
+    /registro, /login   /tickets/**    /tickets/*/comentarios
+           │                │                │
+    ┌──────▼──────┐  ┌──────▼──────┐  ┌──────▼──────┐
+    │  auth       │  │  tickets    │  │  comments   │
+    │  :8001      │  │  :8002      │  │  :8003      │
+    └──────┬──────┘  └──────┬──────┘  └──────┬──────┘
+           │                │                │
+           └────────────────┴────────────────┘
+                            │
+                     MySQL :3306
+```
 
-- Frontend Angular consome a API FastAPI via HTTP.
-- Backend emite JWT no login e protege endpoints com Bearer Token.
-- SQLAlchemy mapeia entidades e persiste no MySQL.
-- Senhas sao armazenadas com hash Bcrypt (Passlib).
+O frontend sempre aponta para `http://localhost:8000`. O nginx decide qual microsserviço responde com base na URL.
+
+---
 
 ## Estrutura do Projeto
 
-```text
-condo_ticket_development/
-	backend/
-		app/
-			database.py
-			models.py
-			schemas.py
-			main.py
-		requirements.txt
-	frontend/
-		src/
-			app/
-				core/
-					guards/
-					interceptors/
-					models/
-					services/
-				modules/
-					auth/
-					tickets/
-	README.md
 ```
+condo_ticket_development/
+├── services/
+│   ├── shared/              # Código compartilhado (ORM, JWT, banco)
+│   │   ├── database.py
+│   │   ├── models.py
+│   │   └── auth_utils.py
+│   ├── auth/                # POST /registro, POST /login
+│   │   ├── app/main.py
+│   │   ├── Dockerfile
+│   │   ├── requirements.txt
+│   │   └── README.md
+│   ├── tickets/             # GET/POST /tickets, PUT /tickets/{id}/status
+│   │   ├── app/main.py
+│   │   ├── Dockerfile
+│   │   └── README.md
+│   └── comments/            # GET/POST/PUT/DELETE /tickets/{id}/comentarios
+│       ├── app/main.py
+│       ├── Dockerfile
+│       └── README.md
+├── nginx/
+│   ├── nginx.conf           # Configuração do API Gateway
+│   └── README.md
+├── frontend/
+│   └── src/
+│       ├── environments/    # URLs de API por ambiente
+│       └── app/
+│           ├── core/        # Services, guards, interceptors, models
+│           └── modules/     # Auth e Tickets (com chat de comentários)
+├── docker-compose.yml       # Orquestra todos os 6 serviços
+├── backend/                 # Código legado (referência histórica)
+└── README.md
+```
+
+---
 
 ## Tecnologias
 
-Backend:
-- FastAPI
-- SQLAlchemy
-- Pydantic
-- PyJWT
-- Passlib + Bcrypt
-- PyMySQL
+| Camada     | Tecnologia                                      |
+|------------|-------------------------------------------------|
+| Frontend   | Angular 21, standalone components, RxJS         |
+| API Gateway| Nginx 1.25                                      |
+| Microsserviços | FastAPI 0.116, Uvicorn                     |
+| ORM        | SQLAlchemy 2.0                                  |
+| Validação  | Pydantic 2.11                                   |
+| Auth       | PyJWT 2.10, Passlib + Bcrypt                    |
+| Banco      | MySQL 8.0, PyMySQL                              |
+| Containers | Docker, Docker Compose                          |
 
-Frontend:
-- Angular 21 (standalone components)
-- Angular Router
-- HttpClient + interceptor JWT
+---
 
-Banco:
-- MySQL
+## Pré-requisitos
 
-## Pre-requisitos
+Para rodar com Docker (recomendado): **Docker Desktop**
 
-- Python 3.11+ (ambiente testado com Python launcher `py`)
-- Node.js 20+ (LTS recomendado)
-- npm
-- MySQL em execucao
+Para rodar localmente sem Docker:
+- Python 3.11+
+- Node.js 20+ e npm
+- MySQL 8.0 em execução
 
-## Configuracao Rapida
+---
 
-### 1. Backend
-
-```bash
-cd backend
-py -m venv .venv
-source .venv/Scripts/activate
-pip install -r requirements.txt
-```
-
-Variaveis de ambiente (exemplo):
-
-```bash
-export DATABASE_URL="mysql+pymysql://root:senha@localhost:3306/condoticket"
-export JWT_SECRET_KEY="troque-esta-chave"
-export JWT_EXPIRE_MINUTES="60"
-export CORS_ALLOW_ORIGINS="http://localhost:4200,http://127.0.0.1:4200"
-```
-
-### 2. Frontend
-
-```bash
-cd frontend
-npm install
-```
-
-## Como Rodar
-
-### Backend
-
-```bash
-cd backend
-source .venv/Scripts/activate
-py -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-- API: `http://127.0.0.1:8000`
-- Swagger: `http://127.0.0.1:8000/docs`
-
-### Frontend
-
-```bash
-cd frontend
-npm start
-```
-
-- App: `http://localhost:4200`
-
-### Execute com Docker Compose
+## Como Rodar com Docker Compose
 
 ```bash
 docker compose up --build
 ```
 
-Isso inicia:
-- `backend` em `http://127.0.0.1:8000`
-- `frontend` em `http://localhost:4200`
-- `mysql` em `mysql:8.0` com banco `condoticket`
+Serviços iniciados:
+| Serviço   | URL pública                  |
+|-----------|------------------------------|
+| Frontend  | http://localhost:4200        |
+| API       | http://localhost:8000        |
+| MySQL     | localhost:3306               |
 
-> O backend e o frontend são serviços independentes conectados via HTTP.
-
-## Autenticacao e Permissoes
-
-Perfis:
-- `ADMIN` (sindico/gestao)
-- `MORADOR`
-
-Fluxo de autenticacao:
-1. Usuario faz `POST /login`.
-2. Backend retorna `access_token` JWT + dados do usuario.
-3. Front salva token e usuario no `localStorage`.
-4. Interceptor adiciona `Authorization: Bearer <token>` nas requisicoes.
-5. Guards e tratamento de `401/403` redirecionam para `/login`.
-
-Regra de visibilidade de chamados:
-- `ADMIN`: lista todos os tickets.
-- `MORADOR`: lista apenas tickets proprios.
-
-## API
-
-Endpoints principais:
-
-- `POST /registro`
-	Registra usuario com senha hasheada.
-
-- `POST /login`
-	Retorna JWT e dados do usuario.
-
-- `GET /tickets` (protegido)
-	Lista tickets conforme perfil.
-
-- `POST /tickets` (protegido)
-	Cria ticket com status inicial `ABERTO`.
-
-Exemplo de login:
-
-```bash
-curl -X POST "http://127.0.0.1:8000/login" \
-	-H "Content-Type: application/json" \
-	-d '{"email":"user@teste.com","senha":"senha123456"}'
-```
-
-Exemplo de listagem com token:
-
-```bash
-curl -X GET "http://127.0.0.1:8000/tickets" \
-	-H "Authorization: Bearer <TOKEN>"
-```
-
-## Fluxo do Frontend
-
-- Roteamento:
-	- `/login`: pagina publica de autenticacao
-	- `/`: pagina de tickets protegida por `authGuard`
-
-- Tickets:
-	- Carregados via backend (sem uso de mock em runtime)
-	- Criacao de ticket chama API protegida
-
-## Comandos Uteis
-
-Frontend:
-
-```bash
-cd frontend
-npm start
-npm run build
-npm test
-```
-
-Backend:
-
-```bash
-cd backend
-source .venv/Scripts/activate
-py -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-## Troubleshooting
-
-Erro de CORS:
-- Verifique `CORS_ALLOW_ORIGINS` no backend.
-- Garanta que frontend esteja em `http://localhost:4200`.
-
-Erro de login sem redirecionamento:
-- O guard exige token + usuario no `localStorage`.
-- `401/403` no backend acionam `logout()` e redirecionamento.
-
-Erro de conexao com MySQL:
-- Verifique `DATABASE_URL`.
-- Confirme se MySQL e banco `condoticket` estao ativos.
+> **Nota:** O serviço `auth` é o único que cria as tabelas no banco (`create_all`).
+> Os demais serviços aguardam o MySQL ficar saudável antes de iniciar.
 
 ---
 
-Documentacao detalhada adicional:
-- `backend/README.md`
-- `frontend/README.md`
+## Como Rodar Localmente (sem Docker)
+
+### 1. MySQL
+
+Certifique-se de que o MySQL está rodando com o banco `condoticket` criado:
+
+```sql
+CREATE DATABASE IF NOT EXISTS condoticket;
+```
+
+### 2. Microsserviços Python
+
+A partir da **raiz do monorepo**, execute cada serviço em um terminal diferente:
+
+```bash
+# Auth Service
+PYTHONPATH=. uvicorn services.auth.app.main:app --port 8001 --reload
+
+# Tickets Service
+PYTHONPATH=. uvicorn services.tickets.app.main:app --port 8002 --reload
+
+# Comments Service
+PYTHONPATH=. uvicorn services.comments.app.main:app --port 8003 --reload
+```
+
+### 3. Frontend
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+> Sem nginx local, aponte o `apiUrl` diretamente para um dos serviços conforme necessidade,
+> ou use um proxy reverso local.
+
+---
+
+## Variáveis de Ambiente
+
+Crie um arquivo `.env` na raiz (ou exporte individualmente):
+
+```env
+DATABASE_URL=mysql+pymysql://root:root@localhost:3306/condoticket
+JWT_SECRET_KEY=troque-esta-chave-em-producao
+JWT_EXPIRE_MINUTES=60
+CORS_ALLOW_ORIGINS=http://localhost:4200,http://127.0.0.1:4200
+MYSQL_ROOT_PASSWORD=root
+```
+
+> **Importante:** `JWT_SECRET_KEY` deve ser a **mesma** em todos os microsserviços.
+
+---
+
+## Autenticação e Perfis
+
+| Perfil    | Permissões                                                    |
+|-----------|---------------------------------------------------------------|
+| `ADMIN`   | Vê todos os tickets, atualiza status, edita/deleta qualquer comentário |
+| `MORADOR` | Vê apenas seus tickets, cria tickets, comenta e edita/deleta os próprios comentários |
+
+**Fluxo:**
+1. `POST /login` → retorna `access_token` JWT
+2. Frontend salva o token no `localStorage`
+3. `AuthInterceptor` injeta `Authorization: Bearer <token>` em todas as requisições
+4. `401/403` do backend acionam logout automático
+
+---
+
+## API — Referência de Endpoints
+
+### Auth Service (`/registro`, `/login`)
+
+| Método | Rota       | Auth | Descrição                         |
+|--------|------------|:----:|------------------------------------|
+| POST   | /registro  | Não  | Registra novo usuário              |
+| POST   | /login     | Não  | Autentica e retorna token JWT      |
+
+### Tickets Service (`/tickets`)
+
+| Método | Rota                    | Auth | Perfil  | Descrição                                    |
+|--------|-------------------------|:----:|:-------:|----------------------------------------------|
+| GET    | /tickets                | Sim  | Qualquer| Lista tickets (ADMIN vê todos)               |
+| POST   | /tickets                | Sim  | Qualquer| Cria ticket com status `ABERTO`              |
+| PUT    | /tickets/{id}/status    | Sim  | ADMIN   | Avança status: ABERTO→EM_ANDAMENTO→RESOLVIDO |
+
+### Comments Service (`/tickets/{id}/comentarios`)
+
+| Método | Rota                                  | Auth | Perfil       | Descrição                    |
+|--------|---------------------------------------|:----:|:------------:|------------------------------|
+| GET    | /tickets/{id}/comentarios             | Sim  | Qualquer     | Lista comentários do ticket  |
+| POST   | /tickets/{id}/comentarios             | Sim  | Qualquer     | Adiciona comentário          |
+| PUT    | /tickets/{id}/comentarios/{cid}       | Sim  | Autor/ADMIN  | Edita mensagem do comentário |
+| DELETE | /tickets/{id}/comentarios/{cid}       | Sim  | Autor/ADMIN  | Remove comentário (204)      |
+
+**Documentação interativa:** cada serviço expõe `/docs` (Swagger UI) na sua porta local.
+
+---
+
+## Exemplos de uso com curl
+
+```bash
+# Login
+TOKEN=$(curl -s -X POST http://localhost:8000/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@teste.com","senha":"senha123456"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# Listar tickets
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/tickets
+
+# Criar comentário
+curl -X POST http://localhost:8000/tickets/1/comentarios \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"mensagem":"Problema identificado, enviando técnico."}'
+
+# Editar comentário
+curl -X PUT http://localhost:8000/tickets/1/comentarios/1 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"mensagem":"Técnico agendado para amanhã às 10h."}'
+
+# Deletar comentário
+curl -X DELETE http://localhost:8000/tickets/1/comentarios/1 \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+## Troubleshooting
+
+**CORS error no browser:**
+Verifique `CORS_ALLOW_ORIGINS` — deve incluir a origem do frontend (`http://localhost:4200`).
+
+**502 Bad Gateway no nginx:**
+Um dos microsserviços não subiu. Verifique os logs: `docker compose logs auth` / `tickets` / `comments`.
+
+**MySQL não pronto (serviços caem no início):**
+O `healthcheck` do MySQL aguarda até 100 segundos. Se persistir, verifique `MYSQL_ROOT_PASSWORD`.
+
+**Token inválido / logout automático:**
+O token expirou (padrão: 60 min) ou `JWT_SECRET_KEY` é diferente entre os serviços.
+
+---
+
+Documentação detalhada de cada serviço:
+- [`services/auth/README.md`](services/auth/README.md)
+- [`services/tickets/README.md`](services/tickets/README.md)
+- [`services/comments/README.md`](services/comments/README.md)
+- [`nginx/README.md`](nginx/README.md)

@@ -17,9 +17,25 @@
   box-shadow: 0 14px 28px rgba(14, 39, 94, 0.08);
 }
 
+.brand-icon {
+  width: 56px;
+  height: 56px;
+  background: #eef2ff;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+}
+
 h1 {
   margin: 0;
   color: #102a6b;
+  text-align: center;
+}
+
+p {
+  text-align: center;
 }
 
 p {
@@ -28,6 +44,7 @@ p {
 }
 
 label {
+
   font-weight: 600;
   color: #1d2f67;
 }
