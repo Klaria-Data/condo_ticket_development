@@ -9,7 +9,12 @@ via ``Base.metadata.create_all``. Os demais serviços assumem que as tabelas já
 
 import logging
 import os
+import hashlib
+import secrets
+import smtplib
 import sys
+from datetime import datetime, timedelta
+from email.message import EmailMessage
 
 # Permite importar o pacote shared independente do diretório de trabalho
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -19,12 +24,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy.orm import Session
 
+from shared.auth_utils import get_current_user
 from shared.auth_utils import create_access_token, hash_password, verify_password
 from shared.database import Base, engine, get_db
-from shared.models import PerfilUsuario, Usuario
+from shared.models import ConviteMorador, PerfilUsuario, Usuario
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+INVITE_EXPIRE_DAYS = int(os.getenv("INVITE_EXPIRE_DAYS", "7"))
+FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://127.0.0.1:4200")
 
 # Cria todas as tabelas na inicialização. Apenas este serviço chama create_all.
 Base.metadata.create_all(bind=engine)
@@ -92,6 +100,88 @@ class LoginResposta(BaseModel):
     perfil: PerfilUsuario
 
 
+class ConviteMoradorCriacao(BaseModel):
+    nome: str = Field(min_length=3, max_length=120)
+    email: EmailStr
+    unidade: str = Field(min_length=1, max_length=30)
+
+
+class ConviteMoradorResposta(BaseModel):
+    id: int
+    nome: str
+    email: EmailStr
+    unidade: str
+    usado: bool
+    data_criacao: datetime
+    data_expiracao: datetime
+    data_uso: datetime | None = None
+    convite_url: str | None = None
+
+
+class ConviteMoradorPublico(BaseModel):
+    nome: str
+    email: EmailStr
+    unidade: str
+    data_expiracao: datetime
+
+
+class AceitarConviteMorador(BaseModel):
+    senha: str = Field(min_length=8, max_length=128)
+
+
+def hash_invite_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def build_invite_url(token: str) -> str:
+    return f"{FRONTEND_BASE_URL.rstrip('/')}/convite/{token}"
+
+
+def send_invite_email(email: str, nome: str, convite_url: str) -> None:
+    smtp_host = os.getenv("SMTP_HOST")
+    if not smtp_host:
+        logger.info("Convite para %s: %s", email, convite_url)
+        return
+
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    smtp_from = os.getenv("SMTP_FROM", smtp_user or "no-reply@condoticket.local")
+
+    message = EmailMessage()
+    message["Subject"] = "Convite para acessar o CondoTicket"
+    message["From"] = smtp_from
+    message["To"] = email
+    message.set_content(
+        f"Olá, {nome}.\n\n"
+        "Você recebeu um convite para acessar o CondoTicket.\n"
+        f"Defina sua senha pelo link: {convite_url}\n\n"
+        "Se você não esperava este convite, ignore este e-mail."
+    )
+
+    with smtplib.SMTP(smtp_host, smtp_port) as smtp:
+        smtp.starttls()
+        if smtp_user and smtp_password:
+            smtp.login(smtp_user, smtp_password)
+        smtp.send_message(message)
+
+
+def require_admin(current_user: Usuario = Depends(get_current_user)) -> Usuario:
+    if current_user.perfil != PerfilUsuario.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas administradores podem executar esta acao",
+        )
+    return current_user
+
+
+def get_valid_invite(token: str, db: Session) -> ConviteMorador:
+    convite = db.query(ConviteMorador).filter(ConviteMorador.token_hash == hash_invite_token(token)).first()
+    if not convite or convite.usado or convite.data_expiracao < datetime.utcnow():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Convite invalido ou expirado")
+    return convite
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 
@@ -154,4 +244,139 @@ def login(payload: LoginEntrada, db: Session = Depends(get_db)) -> LoginResposta
         nome=user.nome,
         unidade=user.unidade,
         perfil=user.perfil,
+    )
+
+
+@app.post(
+    "/moradores/convites",
+    response_model=ConviteMoradorResposta,
+    status_code=status.HTTP_201_CREATED,
+    summary="Convidar morador",
+)
+def criar_convite_morador(
+    payload: ConviteMoradorCriacao,
+    current_user: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> ConviteMoradorResposta:
+    email = str(payload.email).lower()
+    if db.query(Usuario).filter(Usuario.email == email).first():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email ja cadastrado")
+
+    convite_pendente = (
+        db.query(ConviteMorador)
+        .filter(
+            ConviteMorador.email == email,
+            ConviteMorador.usado.is_(False),
+            ConviteMorador.data_expiracao >= datetime.utcnow(),
+        )
+        .first()
+    )
+    if convite_pendente:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ja existe convite pendente para este email")
+
+    token = secrets.token_urlsafe(32)
+    convite = ConviteMorador(
+        nome=payload.nome.strip(),
+        email=email,
+        unidade=payload.unidade.strip(),
+        token_hash=hash_invite_token(token),
+        data_expiracao=datetime.utcnow() + timedelta(days=INVITE_EXPIRE_DAYS),
+        criado_por_id=current_user.id,
+    )
+
+    db.add(convite)
+    db.commit()
+    db.refresh(convite)
+
+    convite_url = build_invite_url(token)
+    send_invite_email(convite.email, convite.nome, convite_url)
+
+    return ConviteMoradorResposta(
+        id=convite.id,
+        nome=convite.nome,
+        email=convite.email,
+        unidade=convite.unidade,
+        usado=convite.usado,
+        data_criacao=convite.data_criacao,
+        data_expiracao=convite.data_expiracao,
+        data_uso=convite.data_uso,
+        convite_url=convite_url,
+    )
+
+
+@app.get(
+    "/moradores/convites",
+    response_model=list[ConviteMoradorResposta],
+    summary="Listar convites de moradores",
+)
+def listar_convites_moradores(
+    current_user: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> list[ConviteMoradorResposta]:
+    convites = db.query(ConviteMorador).order_by(ConviteMorador.data_criacao.desc()).all()
+    return [
+        ConviteMoradorResposta(
+            id=convite.id,
+            nome=convite.nome,
+            email=convite.email,
+            unidade=convite.unidade,
+            usado=convite.usado,
+            data_criacao=convite.data_criacao,
+            data_expiracao=convite.data_expiracao,
+            data_uso=convite.data_uso,
+        )
+        for convite in convites
+    ]
+
+
+@app.get(
+    "/convites/{token}",
+    response_model=ConviteMoradorPublico,
+    summary="Consultar convite",
+)
+def consultar_convite_morador(token: str, db: Session = Depends(get_db)) -> ConviteMoradorPublico:
+    convite = get_valid_invite(token, db)
+    return ConviteMoradorPublico(
+        nome=convite.nome,
+        email=convite.email,
+        unidade=convite.unidade,
+        data_expiracao=convite.data_expiracao,
+    )
+
+
+@app.post(
+    "/convites/{token}/aceitar",
+    response_model=LoginResposta,
+    summary="Aceitar convite",
+)
+def aceitar_convite_morador(
+    token: str,
+    payload: AceitarConviteMorador,
+    db: Session = Depends(get_db),
+) -> LoginResposta:
+    convite = get_valid_invite(token, db)
+    if db.query(Usuario).filter(Usuario.email == convite.email).first():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email ja cadastrado")
+
+    novo_usuario = Usuario(
+        nome=convite.nome,
+        email=convite.email,
+        senha_hash=hash_password(payload.senha),
+        unidade=convite.unidade,
+        perfil=PerfilUsuario.MORADOR,
+    )
+    convite.usado = True
+    convite.data_uso = datetime.utcnow()
+
+    db.add(novo_usuario)
+    db.commit()
+    db.refresh(novo_usuario)
+
+    access_token = create_access_token(subject=str(novo_usuario.id))
+    return LoginResposta(
+        access_token=access_token,
+        usuario_id=novo_usuario.id,
+        nome=novo_usuario.nome,
+        unidade=novo_usuario.unidade,
+        perfil=novo_usuario.perfil,
     )

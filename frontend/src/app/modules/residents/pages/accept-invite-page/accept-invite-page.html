@@ -1,0 +1,37 @@
+<section class="invite-page">
+  <form class="invite-card" [formGroup]="passwordForm" (ngSubmit)="acceptInvite()">
+    <div class="brand-icon">
+      <lucide-icon [img]="Building2" [size]="28" [strokeWidth]="1.8" color="#4f46e5" />
+    </div>
+    <h1>CondoTicket</h1>
+
+    <ng-container *ngIf="invite; else loadingOrError">
+      <p class="welcome">Olá, {{ invite.nome }}</p>
+      <div class="details">
+        <span>{{ invite.email }}</span>
+        <strong>Apto {{ invite.unidade }}</strong>
+      </div>
+
+      <label>
+        Senha
+        <input type="password" formControlName="senha" />
+      </label>
+
+      <label>
+        Confirmar senha
+        <input type="password" formControlName="confirmarSenha" />
+      </label>
+
+      <button type="submit" [disabled]="loading">
+        <lucide-icon [img]="KeyRound" [size]="17" [strokeWidth]="2" />
+        {{ loading ? 'Criando acesso...' : 'Criar acesso' }}
+      </button>
+    </ng-container>
+
+    <ng-template #loadingOrError>
+      <p *ngIf="!errorMessage">Carregando convite...</p>
+    </ng-template>
+
+    <small *ngIf="errorMessage" class="error">{{ errorMessage }}</small>
+  </form>
+</section>

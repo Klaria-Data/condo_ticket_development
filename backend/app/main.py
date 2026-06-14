@@ -1,7 +1,11 @@
 """FastAPI entrypoint with auth and ticket creation endpoints."""
 
 import os
+import hashlib
+import secrets
+import smtplib
 from datetime import datetime, timedelta, timezone
+from email.message import EmailMessage
 
 import jwt
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -37,6 +41,8 @@ security = HTTPBearer()
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "change-me-in-production")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
+INVITE_EXPIRE_DAYS = int(os.getenv("INVITE_EXPIRE_DAYS", "7"))
+FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://127.0.0.1:4200")
 
 
 def hash_password(password: str) -> str:
@@ -51,6 +57,43 @@ def create_access_token(subject: str) -> str:
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=JWT_EXPIRE_MINUTES)
     payload = {"sub": subject, "exp": expires_at}
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+
+def hash_invite_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def build_invite_url(token: str) -> str:
+    return f"{FRONTEND_BASE_URL.rstrip('/')}/convite/{token}"
+
+
+def send_invite_email(email: str, nome: str, convite_url: str) -> None:
+    smtp_host = os.getenv("SMTP_HOST")
+    if not smtp_host:
+        print(f"[ConviteMorador] Convite para {email}: {convite_url}")
+        return
+
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    smtp_from = os.getenv("SMTP_FROM", smtp_user or "no-reply@condoticket.local")
+
+    message = EmailMessage()
+    message["Subject"] = "Convite para acessar o CondoTicket"
+    message["From"] = smtp_from
+    message["To"] = email
+    message.set_content(
+        f"Olá, {nome}.\n\n"
+        "Você recebeu um convite para acessar o CondoTicket.\n"
+        f"Defina sua senha pelo link: {convite_url}\n\n"
+        "Se você não esperava este convite, ignore este e-mail."
+    )
+
+    with smtplib.SMTP(smtp_host, smtp_port) as smtp:
+        smtp.starttls()
+        if smtp_user and smtp_password:
+            smtp.login(smtp_user, smtp_password)
+        smtp.send_message(message)
 
 
 def get_current_user(
@@ -82,6 +125,18 @@ def require_admin(current_user: models.Usuario = Depends(get_current_user)) -> m
         )
 
     return current_user
+
+
+def get_valid_invite(token: str, db: Session) -> models.ConviteMorador:
+    convite = (
+        db.query(models.ConviteMorador)
+        .filter(models.ConviteMorador.token_hash == hash_invite_token(token))
+        .first()
+    )
+    if not convite or convite.usado or convite.data_expiracao < datetime.utcnow():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Convite invalido ou expirado")
+
+    return convite
 
 
 @app.post("/registro", response_model=schemas.UsuarioResposta, status_code=status.HTTP_201_CREATED)
@@ -119,6 +174,128 @@ def login(payload: schemas.LoginEntrada, db: Session = Depends(get_db)):
         nome=user.nome,
         unidade=user.unidade,
         perfil=user.perfil,
+    )
+
+
+@app.post(
+    "/moradores/convites",
+    response_model=schemas.ConviteMoradorResposta,
+    status_code=status.HTTP_201_CREATED,
+)
+def criar_convite_morador(
+    payload: schemas.ConviteMoradorCriacao,
+    current_user: models.Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    email = str(payload.email).lower()
+    if db.query(models.Usuario).filter(models.Usuario.email == email).first():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email ja cadastrado")
+
+    convite_pendente = (
+        db.query(models.ConviteMorador)
+        .filter(
+            models.ConviteMorador.email == email,
+            models.ConviteMorador.usado.is_(False),
+            models.ConviteMorador.data_expiracao >= datetime.utcnow(),
+        )
+        .first()
+    )
+    if convite_pendente:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ja existe convite pendente para este email")
+
+    token = secrets.token_urlsafe(32)
+    convite = models.ConviteMorador(
+        nome=payload.nome.strip(),
+        email=email,
+        unidade=payload.unidade.strip(),
+        token_hash=hash_invite_token(token),
+        data_expiracao=datetime.utcnow() + timedelta(days=INVITE_EXPIRE_DAYS),
+        criado_por_id=current_user.id,
+    )
+
+    db.add(convite)
+    db.commit()
+    db.refresh(convite)
+
+    convite_url = build_invite_url(token)
+    send_invite_email(convite.email, convite.nome, convite_url)
+
+    return schemas.ConviteMoradorResposta(
+        id=convite.id,
+        nome=convite.nome,
+        email=convite.email,
+        unidade=convite.unidade,
+        usado=convite.usado,
+        data_criacao=convite.data_criacao,
+        data_expiracao=convite.data_expiracao,
+        data_uso=convite.data_uso,
+        convite_url=convite_url,
+    )
+
+
+@app.get("/moradores/convites", response_model=list[schemas.ConviteMoradorResposta])
+def listar_convites_moradores(
+    current_user: models.Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    convites = db.query(models.ConviteMorador).order_by(models.ConviteMorador.data_criacao.desc()).all()
+    return [
+        schemas.ConviteMoradorResposta(
+            id=convite.id,
+            nome=convite.nome,
+            email=convite.email,
+            unidade=convite.unidade,
+            usado=convite.usado,
+            data_criacao=convite.data_criacao,
+            data_expiracao=convite.data_expiracao,
+            data_uso=convite.data_uso,
+        )
+        for convite in convites
+    ]
+
+
+@app.get("/convites/{token}", response_model=schemas.ConviteMoradorPublico)
+def consultar_convite_morador(token: str, db: Session = Depends(get_db)):
+    convite = get_valid_invite(token, db)
+    return schemas.ConviteMoradorPublico(
+        nome=convite.nome,
+        email=convite.email,
+        unidade=convite.unidade,
+        data_expiracao=convite.data_expiracao,
+    )
+
+
+@app.post("/convites/{token}/aceitar", response_model=schemas.LoginResposta)
+def aceitar_convite_morador(
+    token: str,
+    payload: schemas.AceitarConviteMorador,
+    db: Session = Depends(get_db),
+):
+    convite = get_valid_invite(token, db)
+    if db.query(models.Usuario).filter(models.Usuario.email == convite.email).first():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email ja cadastrado")
+
+    novo_usuario = models.Usuario(
+        nome=convite.nome,
+        email=convite.email,
+        senha_hash=hash_password(payload.senha),
+        unidade=convite.unidade,
+        perfil=models.PerfilUsuario.MORADOR,
+    )
+    convite.usado = True
+    convite.data_uso = datetime.utcnow()
+
+    db.add(novo_usuario)
+    db.commit()
+    db.refresh(novo_usuario)
+
+    access_token = create_access_token(subject=str(novo_usuario.id))
+    return schemas.LoginResposta(
+        access_token=access_token,
+        usuario_id=novo_usuario.id,
+        nome=novo_usuario.nome,
+        unidade=novo_usuario.unidade,
+        perfil=novo_usuario.perfil,
     )
 
 

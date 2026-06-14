@@ -80,6 +80,16 @@ def create_bookable_place(client, token: str, *, nome: str = "Piscina") -> dict:
     return response.json()
 
 
+def create_resident_invite(client, token: str, *, email: str = "novo.morador@teste.com") -> dict:
+    response = client.post(
+        "/moradores/convites",
+        json={"nome": "Novo Morador", "email": email, "unidade": "302"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
 def test_registrar_usuario_e_email_duplicado(client):
     email = "duplicado@teste.com"
 
@@ -301,3 +311,46 @@ def test_criar_agendamento_bloqueia_conflito_de_horario(client):
     listagem = client.get("/agendamentos", headers={"Authorization": f"Bearer {morador2_token}"})
     assert listagem.status_code == 200
     assert len(listagem.json()) == 1
+
+
+def test_sindico_cria_convite_e_morador_aceita_com_senha(client):
+    admin_email = "sindico-convite@teste.com"
+    novo_email = "convidado@teste.com"
+
+    register_user(client, email=admin_email, perfil="ADMIN")
+    admin_token = login_user(client, email=admin_email).json()["access_token"]
+
+    convite = create_resident_invite(client, admin_token, email=novo_email)
+    assert convite["email"] == novo_email
+    assert convite["usado"] is False
+    assert "/convite/" in convite["convite_url"]
+
+    token = convite["convite_url"].rstrip("/").split("/")[-1]
+    consulta = client.get(f"/convites/{token}")
+    assert consulta.status_code == 200
+    assert consulta.json()["unidade"] == "302"
+
+    aceite = client.post(f"/convites/{token}/aceitar", json={"senha": "minhasenha123"})
+    assert aceite.status_code == 200, aceite.text
+    assert aceite.json()["perfil"] == "MORADOR"
+
+    login = login_user(client, email=novo_email, senha="minhasenha123")
+    assert login.status_code == 200
+    assert login.json()["unidade"] == "302"
+
+    segundo_aceite = client.post(f"/convites/{token}/aceitar", json={"senha": "outrasenha123"})
+    assert segundo_aceite.status_code == 404
+
+
+def test_morador_nao_pode_criar_convite(client):
+    morador_email = "morador-sem-convite@teste.com"
+    register_user(client, email=morador_email, perfil="MORADOR")
+    morador_token = login_user(client, email=morador_email).json()["access_token"]
+
+    response = client.post(
+        "/moradores/convites",
+        json={"nome": "Outro Morador", "email": "outro@teste.com", "unidade": "401"},
+        headers={"Authorization": f"Bearer {morador_token}"},
+    )
+
+    assert response.status_code == 403

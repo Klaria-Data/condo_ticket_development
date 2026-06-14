@@ -43,6 +43,35 @@ class LoginResposta(TokenResposta):
     perfil: PerfilUsuario
 
 
+class ConviteMoradorCriacao(BaseModel):
+    nome: str = Field(min_length=3, max_length=120)
+    email: EmailStr
+    unidade: str = Field(min_length=1, max_length=30)
+
+
+class ConviteMoradorResposta(BaseModel):
+    id: int
+    nome: str
+    email: EmailStr
+    unidade: str
+    usado: bool
+    data_criacao: datetime
+    data_expiracao: datetime
+    data_uso: datetime | None = None
+    convite_url: str | None = None
+
+
+class ConviteMoradorPublico(BaseModel):
+    nome: str
+    email: EmailStr
+    unidade: str
+    data_expiracao: datetime
+
+
+class AceitarConviteMorador(BaseModel):
+    senha: str = Field(min_length=8, max_length=128)
+
+
 class TicketCriacao(BaseModel):
     titulo: str = Field(min_length=3, max_length=200)
     descricao: str = Field(min_length=5)

@@ -46,6 +46,7 @@ class Usuario(Base):
         back_populates="usuario", cascade="all, delete-orphan"
     )
     reservas: Mapped[list["ReservaLocal"]] = relationship(back_populates="usuario", cascade="all, delete-orphan")
+    convites_enviados: Mapped[list["ConviteMorador"]] = relationship(back_populates="criado_por")
 
 
 class Ticket(Base):
@@ -141,3 +142,20 @@ class ReservaLocal(Base):
 
     local: Mapped["LocalAgendavel"] = relationship(back_populates="reservas")
     usuario: Mapped["Usuario"] = relationship(back_populates="reservas")
+
+
+class ConviteMorador(Base):
+    __tablename__ = "CONVITE_MORADOR"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    nome: Mapped[str] = mapped_column(String(120), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    unidade: Mapped[str] = mapped_column(String(30), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    usado: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    data_criacao: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    data_expiracao: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    data_uso: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    criado_por_id: Mapped[int] = mapped_column(ForeignKey("USUARIO.id"), nullable=False)
+
+    criado_por: Mapped["Usuario"] = relationship(back_populates="convites_enviados")

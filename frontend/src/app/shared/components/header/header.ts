@@ -1,7 +1,15 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-import { CalendarDays, LucideAngularModule, Building2, UserRound, ShieldCheck, Wrench } from 'lucide-angular';
+import {
+  CalendarDays,
+  LucideAngularModule,
+  Building2,
+  UserRound,
+  ShieldCheck,
+  UsersRound,
+  Wrench,
+} from 'lucide-angular';
 import { ViewMode } from '../../../core/models/ticket.model';
 
 @Component({
@@ -19,6 +27,7 @@ export class AppHeaderComponent {
   readonly CalendarDays = CalendarDays;
   readonly UserRound = UserRound;
   readonly ShieldCheck = ShieldCheck;
+  readonly UsersRound = UsersRound;
   readonly Wrench = Wrench;
 
   setMode(mode: ViewMode): void {
