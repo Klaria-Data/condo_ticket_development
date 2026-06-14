@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Building2, KeyRound, LucideAngularModule } from 'lucide-angular';
@@ -36,6 +36,7 @@ export class AcceptInvitePageComponent implements OnInit {
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly residentInvitesService: ResidentInvitesService,
+    private readonly cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -48,9 +49,11 @@ export class AcceptInvitePageComponent implements OnInit {
     this.residentInvitesService.getInvite(this.token).subscribe({
       next: (invite) => {
         this.invite = invite;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.errorMessage = 'Convite invalido ou expirado.';
+        this.cdr.detectChanges();
       },
     });
   }
@@ -72,6 +75,7 @@ export class AcceptInvitePageComponent implements OnInit {
       next: (response) => {
         this.saveSession(response);
         this.loading = false;
+        this.cdr.detectChanges();
         void this.router.navigate(['/']);
       },
       error: (err) => this.handleError(err),
@@ -92,5 +96,6 @@ export class AcceptInvitePageComponent implements OnInit {
   private handleError(err: HttpErrorResponse): void {
     this.loading = false;
     this.errorMessage = err.error?.detail ?? 'Falha ao aceitar convite.';
+    this.cdr.detectChanges();
   }
 }
