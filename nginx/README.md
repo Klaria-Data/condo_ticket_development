@@ -1,34 +1,38 @@
-# Nginx — API Gateway
+# Nginx API Gateway
 
-O nginx atua como ponto de entrada único para toda a API (porta 8000).
-O frontend sempre chama `http://localhost:8000`; o nginx roteia internamente para o microsserviço correto.
+O nginx e o ponto de entrada publico da API na arquitetura de microservicos.
 
-## Mapa de Roteamento
+Porta publica: `8000`.
 
-| URL Pattern                          | Serviço destino    | Porta interna |
-|--------------------------------------|--------------------|:-------------:|
-| `/registro`, `/login`                | auth-service       | 8001          |
-| `/tickets/{id}/comentarios/**`       | comments-service   | 8003          |
-| `/tickets/**`                        | tickets-service    | 8002          |
+O frontend chama `http://localhost:8000` e o nginx encaminha a requisicao para o microsservico correto.
 
-## Atenção: Ordem dos Blocos `location`
+## Mapa de Rotas
 
-O bloco de comentários **deve** aparecer antes do bloco de tickets no arquivo de configuração.
-O nginx usa correspondência por prefixo mais longo para blocos `location ~` (regex),
-então se `/tickets` vier primeiro, as rotas de comentários nunca serão alcançadas.
+| URL | Servico destino | Porta interna |
+| --- | --- | --- |
+| `/registro` | auth | 8001 |
+| `/login` | auth | 8001 |
+| `/moradores/convites` | auth | 8001 |
+| `/convites/{token}` | auth | 8001 |
+| `/tickets` | tickets | 8002 |
+| `/tickets/{id}/status` | tickets | 8002 |
+| `/locais-agendaveis` | tickets | 8002 |
+| `/agendamentos` | tickets | 8002 |
+| `/tickets/{id}/comentarios` | comments | 8003 |
 
-## Adicionando um Novo Serviço
+## Ordem dos Blocos `location`
 
-1. Defina o upstream no início do arquivo:
-   ```nginx
-   upstream nome_service {
-       server nome:8004;
-   }
-   ```
-2. Adicione um bloco `location` na ordem correta (prefixos mais longos primeiro):
-   ```nginx
-   location /nova-rota {
-       proxy_pass http://nome_service;
-   }
-   ```
-3. Adicione o serviço no `docker-compose.yml` com `expose: ['8004']`.
+A ordem importa.
+
+Rotas especificas devem vir antes de rotas mais gerais. Por isso:
+
+- `/tickets/{id}/comentarios` vem antes de `/tickets`;
+- rotas de auth e convite ficam antes das rotas de tickets;
+- agendamentos e locais ficam apontados para `tickets`.
+
+## Como Adicionar Nova Rota
+
+1. Confirme qual microsservico e dono da regra.
+2. Adicione o `location` no `nginx/nginx.conf`.
+3. Atualize este README e o README raiz.
+4. Se for um novo servico, adicione tambem no `docker-compose.yml`.

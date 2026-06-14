@@ -1,20 +1,17 @@
-version: '3.9'
-
-# CondoTicket — Arquitetura de Microsserviços
+# CondoTicket - Arquitetura de Microservicos
 #
-# Serviços:
-#   nginx     - API Gateway (porta 8000, pública)
-#   auth      - Autenticação: /registro e /login (porta 8001, interna)
-#   tickets   - Gestão de tickets (porta 8002, interna)
-#   comments  - Chat/comentários dos tickets (porta 8003, interna)
-#   frontend  - Angular SPA (porta 4200, pública)
-#   mysql     - Banco de dados MySQL 8 (porta 3306, local dev)
+# Para subir tudo:
+#   docker compose up --build
 #
-# Para subir tudo: docker compose up --build
+# Servicos:
+#   nginx     - API Gateway publico na porta 8000
+#   auth      - autenticacao, login e convites de moradores
+#   tickets   - chamados e agendamentos de areas compartilhadas
+#   comments  - comentarios dos chamados
+#   frontend  - SPA Angular na porta 4200
+#   mysql     - banco MySQL 8
 
 services:
-
-  # ── API Gateway ──────────────────────────────────────────────────────────
   nginx:
     image: nginx:1.25-alpine
     ports:
@@ -27,7 +24,6 @@ services:
       - comments
     restart: unless-stopped
 
-  # ── Auth Service ──────────────────────────────────────────────────────────
   auth:
     build:
       context: .
@@ -39,12 +35,18 @@ services:
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
       - JWT_EXPIRE_MINUTES=${JWT_EXPIRE_MINUTES:-60}
       - CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS:-http://localhost:4200,http://127.0.0.1:4200}
+      - FRONTEND_BASE_URL=${FRONTEND_BASE_URL:-http://localhost:4200}
+      - INVITE_EXPIRE_DAYS=${INVITE_EXPIRE_DAYS:-7}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-}
     depends_on:
       mysql:
         condition: service_healthy
     restart: unless-stopped
 
-  # ── Tickets Service ───────────────────────────────────────────────────────
   tickets:
     build:
       context: .
@@ -61,7 +63,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # ── Comments Service ──────────────────────────────────────────────────────
   comments:
     build:
       context: .
@@ -78,7 +79,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # ── Frontend ──────────────────────────────────────────────────────────────
   frontend:
     build: ./frontend
     ports:
@@ -87,7 +87,6 @@ services:
       - nginx
     restart: unless-stopped
 
-  # ── MySQL Database ────────────────────────────────────────────────────────
   mysql:
     image: mysql:8.0
     ports:
