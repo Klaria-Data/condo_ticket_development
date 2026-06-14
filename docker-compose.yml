@@ -42,6 +42,10 @@ services:
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASSWORD=${SMTP_PASSWORD:-}
       - SMTP_FROM=${SMTP_FROM:-}
+      - SEED_ADMIN_NAME=${SEED_ADMIN_NAME:-Sindico Teste}
+      - SEED_ADMIN_EMAIL=${SEED_ADMIN_EMAIL:-sindico@teste.com}
+      - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-senha123456}
+      - SEED_ADMIN_UNIDADE=${SEED_ADMIN_UNIDADE:-301}
     depends_on:
       mysql:
         condition: service_healthy

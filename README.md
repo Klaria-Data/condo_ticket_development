@@ -61,6 +61,15 @@ Servicos publicos:
 | API Gateway | http://localhost:8000 |
 | MySQL | localhost:3306 |
 
+Primeiro acesso local criado automaticamente pelo `auth` quando usar o `docker-compose.yml` padrao:
+
+```text
+Email: sindico@teste.com
+Senha: senha123456
+```
+
+Essas credenciais sao apenas para desenvolvimento local. Em outro ambiente, sobrescreva as variaveis `SEED_ADMIN_*`.
+
 ## Como Rodar Localmente Sem Docker
 
 Suba o MySQL com o banco `condoticket` criado:
@@ -114,9 +123,15 @@ SMTP_PORT=587
 SMTP_USER=usuario
 SMTP_PASSWORD=senha
 SMTP_FROM=no-reply@condoticket.com
+SEED_ADMIN_NAME=Sindico Teste
+SEED_ADMIN_EMAIL=sindico@teste.com
+SEED_ADMIN_PASSWORD=senha123456
+SEED_ADMIN_UNIDADE=301
 ```
 
 Se `SMTP_HOST` nao estiver configurado, o backend nao envia email real. Nesse caso, o link do convite e retornado pela API e registrado nos logs, o que ajuda no desenvolvimento local.
+
+As variaveis `SEED_ADMIN_*` criam um sindico inicial se o e-mail ainda nao existir. Isso evita que um banco novo fique sem usuario administrador.
 
 ## Perfis
 
