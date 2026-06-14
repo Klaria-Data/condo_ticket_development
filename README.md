@@ -59,7 +59,7 @@ Servicos publicos:
 | --- | --- |
 | Frontend | http://localhost:4200 |
 | API Gateway | http://localhost:8000 |
-| MySQL | localhost:3306 |
+| MySQL | interno no Docker como `mysql:3306` |
 
 Primeiro acesso local criado automaticamente pelo `auth` quando usar o `docker-compose.yml` padrao:
 
@@ -132,6 +132,12 @@ SEED_ADMIN_UNIDADE=301
 Se `SMTP_HOST` nao estiver configurado, o backend nao envia email real. Nesse caso, o link do convite e retornado pela API e registrado nos logs, o que ajuda no desenvolvimento local.
 
 As variaveis `SEED_ADMIN_*` criam um sindico inicial se o e-mail ainda nao existir. Isso evita que um banco novo fique sem usuario administrador.
+
+O MySQL nao e publicado no host por padrao para evitar conflito com instalacoes locais na porta `3306`. Para acessar o banco manualmente:
+
+```bash
+docker compose exec mysql mysql -uroot -proot condoticket
+```
 
 ## Perfis
 
