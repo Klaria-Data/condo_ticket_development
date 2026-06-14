@@ -1,12 +1,13 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, Building2, UserRound, ShieldCheck } from 'lucide-angular';
+import { RouterLink, RouterLinkActive } from '@angular/router';
+import { CalendarDays, LucideAngularModule, Building2, UserRound, ShieldCheck, Wrench } from 'lucide-angular';
 import { ViewMode } from '../../../core/models/ticket.model';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule],
+  imports: [CommonModule, LucideAngularModule, RouterLink, RouterLinkActive],
   templateUrl: './header.html',
   styleUrl: './header.css',
 })
@@ -15,8 +16,10 @@ export class AppHeaderComponent {
   @Output() viewModeChange = new EventEmitter<ViewMode>();
 
   readonly Building2 = Building2;
+  readonly CalendarDays = CalendarDays;
   readonly UserRound = UserRound;
   readonly ShieldCheck = ShieldCheck;
+  readonly Wrench = Wrench;
 
   setMode(mode: ViewMode): void {
     this.viewMode = mode;

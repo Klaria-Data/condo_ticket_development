@@ -5,21 +5,34 @@
     </div>
     <div>
       <h1>CondoTicket</h1>
-      <p>Gerencie suas solicitações</p>
+      <p>Gerencie o condominio</p>
     </div>
   </div>
 
-  <div class="switch">
-    <span>Visualizar como:</span>
-    <div class="buttons">
-      <button type="button" [class.active]="viewMode === 'MORADOR'" (click)="setMode('MORADOR')">
-        <lucide-icon [img]="UserRound" [size]="15" [strokeWidth]="2" />
-        Morador
-      </button>
-      <button type="button" [class.active]="viewMode === 'SINDICO'" (click)="setMode('SINDICO')">
-        <lucide-icon [img]="ShieldCheck" [size]="15" [strokeWidth]="2" />
-        Síndico
-      </button>
+  <div class="right">
+    <nav class="nav">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+        <lucide-icon [img]="Wrench" [size]="15" [strokeWidth]="2" />
+        Chamados
+      </a>
+      <a routerLink="/agendamentos" routerLinkActive="active">
+        <lucide-icon [img]="CalendarDays" [size]="15" [strokeWidth]="2" />
+        Agendamentos
+      </a>
+    </nav>
+
+    <div class="switch">
+      <span>Visualizar como:</span>
+      <div class="buttons">
+        <button type="button" [class.active]="viewMode === 'MORADOR'" (click)="setMode('MORADOR')">
+          <lucide-icon [img]="UserRound" [size]="15" [strokeWidth]="2" />
+          Morador
+        </button>
+        <button type="button" [class.active]="viewMode === 'SINDICO'" (click)="setMode('SINDICO')">
+          <lucide-icon [img]="ShieldCheck" [size]="15" [strokeWidth]="2" />
+          Sindico
+        </button>
+      </div>
     </div>
   </div>
 </header>

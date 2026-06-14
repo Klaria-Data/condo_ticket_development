@@ -1,0 +1,136 @@
+<app-header [viewMode]="viewMode" (viewModeChange)="onViewModeChange($event)"></app-header>
+
+<div class="page">
+  <main class="content">
+    <section class="title-row">
+      <div>
+        <p class="eyebrow">Areas compartilhadas</p>
+        <h2>Agendamentos</h2>
+      </div>
+      <div class="summary">
+        <span>{{ places.length }} locais</span>
+        <span>{{ reservations.length }} reservas</span>
+      </div>
+    </section>
+
+    <p *ngIf="errorMessage" class="alert error">{{ errorMessage }}</p>
+    <p *ngIf="successMessage" class="alert success">{{ successMessage }}</p>
+
+    <section class="layout">
+      <div class="schedule-panel">
+        <div class="panel-header">
+          <div>
+            <h3>Agenda</h3>
+            <p>Reservas confirmadas</p>
+          </div>
+          <lucide-icon [img]="CalendarDays" [size]="24" [strokeWidth]="1.8" />
+        </div>
+
+        <div *ngIf="isLoading" class="empty">Carregando agendamentos...</div>
+
+        <div *ngIf="!isLoading && !upcomingReservations.length" class="empty">
+          Nenhuma reserva cadastrada.
+        </div>
+
+        <article *ngFor="let reservation of upcomingReservations" class="reservation-card">
+          <div class="place-icon">
+            <lucide-icon [img]="Waves" [size]="20" [strokeWidth]="1.9" />
+          </div>
+          <div class="reservation-body">
+            <div class="reservation-top">
+              <div>
+                <h4>{{ reservation.local_nome }}</h4>
+                <p>{{ formatDateTime(reservation.inicio) }}</p>
+              </div>
+              <span class="time">
+                <lucide-icon [img]="Clock3" [size]="14" [strokeWidth]="2" />
+                {{ formatTimeRange(reservation) }}
+              </span>
+            </div>
+            <div class="resident">
+              <span>{{ reservation.usuario_nome }}</span>
+              <strong>Apto {{ reservation.unidade }}</strong>
+            </div>
+            <p *ngIf="reservation.observacao" class="note">{{ reservation.observacao }}</p>
+          </div>
+        </article>
+      </div>
+
+      <aside class="side-panel">
+        <form class="form-block" [formGroup]="reservationForm" (ngSubmit)="createReservation()">
+          <div class="panel-header compact">
+            <div>
+              <h3>Nova reserva</h3>
+              <p>Confirmacao automatica</p>
+            </div>
+            <lucide-icon [img]="MapPin" [size]="22" [strokeWidth]="1.8" />
+          </div>
+
+          <label>
+            Local
+            <select formControlName="local_id">
+              <option [ngValue]="0">Selecione</option>
+              <option *ngFor="let place of places" [ngValue]="place.id">{{ place.nome }}</option>
+            </select>
+          </label>
+
+          <label>
+            Data
+            <input type="date" formControlName="data" />
+          </label>
+
+          <div class="time-grid">
+            <label>
+              Inicio
+              <input type="time" formControlName="inicio" />
+            </label>
+            <label>
+              Fim
+              <input type="time" formControlName="fim" />
+            </label>
+          </div>
+
+          <label>
+            Observacao
+            <textarea rows="3" formControlName="observacao"></textarea>
+          </label>
+
+          <button type="submit" class="primary-button" [disabled]="!places.length">
+            <lucide-icon [img]="Plus" [size]="17" [strokeWidth]="2" />
+            Reservar
+          </button>
+        </form>
+
+        <form
+          *ngIf="viewMode === 'SINDICO'"
+          class="form-block"
+          [formGroup]="placeForm"
+          (ngSubmit)="createPlace()"
+        >
+          <div class="panel-header compact">
+            <div>
+              <h3>Novo local</h3>
+              <p>Disponivel para moradores</p>
+            </div>
+            <lucide-icon [img]="Landmark" [size]="22" [strokeWidth]="1.8" />
+          </div>
+
+          <label>
+            Nome
+            <input type="text" formControlName="nome" placeholder="Piscina, academia..." />
+          </label>
+
+          <label>
+            Descricao
+            <textarea rows="3" formControlName="descricao"></textarea>
+          </label>
+
+          <button type="submit" class="secondary-button">
+            <lucide-icon [img]="Dumbbell" [size]="17" [strokeWidth]="2" />
+            Cadastrar local
+          </button>
+        </form>
+      </aside>
+    </section>
+  </main>
+</div>

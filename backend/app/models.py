@@ -3,7 +3,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -45,6 +45,7 @@ class Usuario(Base):
     comentarios_forum: Mapped[list["ComentarioForum"]] = relationship(
         back_populates="usuario", cascade="all, delete-orphan"
     )
+    reservas: Mapped[list["ReservaLocal"]] = relationship(back_populates="usuario", cascade="all, delete-orphan")
 
 
 class Ticket(Base):
@@ -113,3 +114,30 @@ class ComentarioForum(Base):
 
     postagem: Mapped["PostagemForum"] = relationship(back_populates="comentarios")
     usuario: Mapped["Usuario"] = relationship(back_populates="comentarios_forum")
+
+
+class LocalAgendavel(Base):
+    __tablename__ = "LOCAL_AGENDAVEL"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    nome: Mapped[str] = mapped_column(String(120), unique=True, index=True, nullable=False)
+    descricao: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    data_criacao: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    reservas: Mapped[list["ReservaLocal"]] = relationship(back_populates="local", cascade="all, delete-orphan")
+
+
+class ReservaLocal(Base):
+    __tablename__ = "RESERVA_LOCAL"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    local_id: Mapped[int] = mapped_column(ForeignKey("LOCAL_AGENDAVEL.id"), nullable=False)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("USUARIO.id"), nullable=False)
+    inicio: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    fim: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    observacao: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    data_criacao: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    local: Mapped["LocalAgendavel"] = relationship(back_populates="reservas")
+    usuario: Mapped["Usuario"] = relationship(back_populates="reservas")

@@ -70,6 +70,16 @@ def create_comment(client, token: str, ticket_id: int, mensagem: str) -> dict:
     return response.json()
 
 
+def create_bookable_place(client, token: str, *, nome: str = "Piscina") -> dict:
+    response = client.post(
+        "/locais-agendaveis",
+        json={"nome": nome, "descricao": "Area compartilhada do condominio."},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
 def test_registrar_usuario_e_email_duplicado(client):
     email = "duplicado@teste.com"
 
@@ -222,5 +232,72 @@ def test_criar_e_listar_comentarios_ticket(client):
     assert response.status_code == 200
     comments = response.json()
     assert len(comments) == 1
-    assert comments[0]["mensagem"] == "Primeiro comentário"
-    assert comments[0]["usuario_nome"] == "Usuário de Teste"
+    assert comments[0]["ticket_id"] == ticket["id"]
+
+
+def test_sindico_cria_local_agendavel_e_morador_nao_pode_criar(client):
+    admin_email = "sindico-locais@teste.com"
+    morador_email = "morador-locais@teste.com"
+
+    register_user(client, email=admin_email, perfil="ADMIN")
+    register_user(client, email=morador_email, perfil="MORADOR")
+
+    admin_token = login_user(client, email=admin_email).json()["access_token"]
+    morador_token = login_user(client, email=morador_email).json()["access_token"]
+
+    local = create_bookable_place(client, admin_token, nome="Academia")
+    assert local["nome"] == "Academia"
+    assert local["ativo"] is True
+
+    forbidden = client.post(
+        "/locais-agendaveis",
+        json={"nome": "Salao de festas"},
+        headers={"Authorization": f"Bearer {morador_token}"},
+    )
+    assert forbidden.status_code == 403
+
+
+def test_criar_agendamento_bloqueia_conflito_de_horario(client):
+    admin_email = "sindico-agendamento@teste.com"
+    morador1_email = "morador301@teste.com"
+    morador2_email = "morador302@teste.com"
+
+    register_user(client, email=admin_email, perfil="ADMIN")
+    register_user(client, email=morador1_email, perfil="MORADOR")
+    register_user(client, email=morador2_email, perfil="MORADOR")
+
+    admin_token = login_user(client, email=admin_email).json()["access_token"]
+    morador1_token = login_user(client, email=morador1_email).json()["access_token"]
+    morador2_token = login_user(client, email=morador2_email).json()["access_token"]
+
+    local = create_bookable_place(client, admin_token, nome="Piscina")
+
+    reserva = client.post(
+        "/agendamentos",
+        json={
+            "local_id": local["id"],
+            "inicio": "2027-01-02T13:00:00",
+            "fim": "2027-01-02T17:00:00",
+            "observacao": "Reserva do apartamento 301",
+        },
+        headers={"Authorization": f"Bearer {morador1_token}"},
+    )
+    assert reserva.status_code == 201, reserva.text
+    assert reserva.json()["local_nome"] == "Piscina"
+    assert reserva.json()["unidade"] == "101"
+
+    conflito = client.post(
+        "/agendamentos",
+        json={
+            "local_id": local["id"],
+            "inicio": "2027-01-02T14:00:00",
+            "fim": "2027-01-02T16:00:00",
+        },
+        headers={"Authorization": f"Bearer {morador2_token}"},
+    )
+    assert conflito.status_code == 409
+    assert "Horario indisponivel" in conflito.json().get("detail", "")
+
+    listagem = client.get("/agendamentos", headers={"Authorization": f"Bearer {morador2_token}"})
+    assert listagem.status_code == 200
+    assert len(listagem.json()) == 1

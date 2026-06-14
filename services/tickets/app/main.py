@@ -18,12 +18,12 @@ from datetime import datetime
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.orm import Session, joinedload
 
 from shared.auth_utils import get_current_user
 from shared.database import get_db
-from shared.models import PerfilUsuario, StatusTicket, Ticket, Usuario
+from shared.models import LocalAgendavel, PerfilUsuario, ReservaLocal, StatusTicket, Ticket, Usuario
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -95,6 +95,64 @@ class TicketResposta(BaseModel):
             data_atualizacao=ticket.data_atualizacao,
             usuario_nome=ticket.usuario.nome if ticket.usuario else None,
             unidade=ticket.usuario.unidade if ticket.usuario else None,
+        )
+
+
+class LocalAgendavelCriacao(BaseModel):
+    nome: str = Field(min_length=3, max_length=120)
+    descricao: str | None = Field(default=None, max_length=1000)
+
+
+class LocalAgendavelResposta(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    nome: str
+    descricao: str | None
+    ativo: bool
+    data_criacao: datetime
+
+
+class ReservaLocalCriacao(BaseModel):
+    local_id: int
+    inicio: datetime
+    fim: datetime
+    observacao: str | None = Field(default=None, max_length=500)
+
+    @field_validator("fim")
+    @classmethod
+    def validar_periodo(cls, fim: datetime, info):
+        inicio = info.data.get("inicio")
+        if inicio and fim <= inicio:
+            raise ValueError("Horario final deve ser posterior ao horario inicial")
+        return fim
+
+
+class ReservaLocalResposta(BaseModel):
+    id: int
+    local_id: int
+    local_nome: str
+    usuario_id: int
+    usuario_nome: str
+    unidade: str
+    inicio: datetime
+    fim: datetime
+    observacao: str | None
+    data_criacao: datetime
+
+    @classmethod
+    def from_orm_with_relations(cls, reserva: ReservaLocal) -> "ReservaLocalResposta":
+        return cls(
+            id=reserva.id,
+            local_id=reserva.local_id,
+            local_nome=reserva.local.nome if reserva.local else "",
+            usuario_id=reserva.usuario_id,
+            usuario_nome=reserva.usuario.nome if reserva.usuario else "",
+            unidade=reserva.usuario.unidade if reserva.usuario else "",
+            inicio=reserva.inicio,
+            fim=reserva.fim,
+            observacao=reserva.observacao,
+            data_criacao=reserva.data_criacao,
         )
 
 
@@ -220,3 +278,126 @@ def atualizar_status_ticket(
 
     logger.info("Ticket %d atualizado para status %s", ticket_id, payload.status)
     return TicketResposta.from_orm_with_usuario(ticket)
+
+
+@app.get(
+    "/locais-agendaveis",
+    response_model=list[LocalAgendavelResposta],
+    summary="Listar locais agendaveis",
+)
+def listar_locais_agendaveis(
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[LocalAgendavel]:
+    return (
+        db.query(LocalAgendavel)
+        .filter(LocalAgendavel.ativo.is_(True))
+        .order_by(LocalAgendavel.nome.asc())
+        .all()
+    )
+
+
+@app.post(
+    "/locais-agendaveis",
+    response_model=LocalAgendavelResposta,
+    status_code=status.HTTP_201_CREATED,
+    summary="Criar local agendavel",
+)
+def criar_local_agendavel(
+    payload: LocalAgendavelCriacao,
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> LocalAgendavel:
+    if current_user.perfil != PerfilUsuario.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas administradores podem executar esta acao",
+        )
+
+    nome_normalizado = payload.nome.strip()
+    existing_local = db.query(LocalAgendavel).filter(LocalAgendavel.nome == nome_normalizado).first()
+    if existing_local:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Local ja cadastrado")
+
+    novo_local = LocalAgendavel(
+        nome=nome_normalizado,
+        descricao=payload.descricao.strip() if payload.descricao else None,
+    )
+
+    db.add(novo_local)
+    db.commit()
+    db.refresh(novo_local)
+
+    logger.info("Local agendavel criado: id=%d nome=%s", novo_local.id, novo_local.nome)
+    return novo_local
+
+
+@app.get(
+    "/agendamentos",
+    response_model=list[ReservaLocalResposta],
+    summary="Listar agendamentos",
+)
+def listar_agendamentos(
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[ReservaLocalResposta]:
+    reservas = (
+        db.query(ReservaLocal)
+        .options(joinedload(ReservaLocal.local), joinedload(ReservaLocal.usuario))
+        .order_by(ReservaLocal.inicio.asc())
+        .all()
+    )
+
+    return [ReservaLocalResposta.from_orm_with_relations(reserva) for reserva in reservas]
+
+
+@app.post(
+    "/agendamentos",
+    response_model=ReservaLocalResposta,
+    status_code=status.HTTP_201_CREATED,
+    summary="Criar agendamento",
+)
+def criar_agendamento(
+    payload: ReservaLocalCriacao,
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ReservaLocalResposta:
+    local = (
+        db.query(LocalAgendavel)
+        .filter(LocalAgendavel.id == payload.local_id, LocalAgendavel.ativo.is_(True))
+        .first()
+    )
+    if not local:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local agendavel nao encontrado")
+
+    reserva_conflitante = (
+        db.query(ReservaLocal)
+        .filter(
+            ReservaLocal.local_id == payload.local_id,
+            ReservaLocal.inicio < payload.fim,
+            ReservaLocal.fim > payload.inicio,
+        )
+        .first()
+    )
+    if reserva_conflitante:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Horario indisponivel para este local",
+        )
+
+    nova_reserva = ReservaLocal(
+        local_id=payload.local_id,
+        usuario_id=current_user.id,
+        inicio=payload.inicio,
+        fim=payload.fim,
+        observacao=payload.observacao.strip() if payload.observacao else None,
+    )
+
+    db.add(nova_reserva)
+    db.commit()
+    db.refresh(nova_reserva)
+    nova_reserva.local = local
+    nova_reserva.usuario = current_user
+
+    logger.info("Agendamento criado: id=%d local_id=%d usuario_id=%d", nova_reserva.id, local.id, current_user.id)
+    return ReservaLocalResposta.from_orm_with_relations(nova_reserva)
