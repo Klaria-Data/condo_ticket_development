@@ -19,7 +19,7 @@
         <lucide-icon [img]="CalendarDays" [size]="15" [strokeWidth]="2" />
         Agendamentos
       </a>
-      <a routerLink="/moradores" routerLinkActive="active">
+      <a *ngIf="canManageResidents" routerLink="/moradores" routerLinkActive="active">
         <lucide-icon [img]="UsersRound" [size]="15" [strokeWidth]="2" />
         Moradores
       </a>

@@ -11,6 +11,7 @@ import {
   Wrench,
 } from 'lucide-angular';
 import { ViewMode } from '../../../core/models/ticket.model';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-header',
@@ -29,6 +30,12 @@ export class AppHeaderComponent {
   readonly ShieldCheck = ShieldCheck;
   readonly UsersRound = UsersRound;
   readonly Wrench = Wrench;
+
+  constructor(private readonly authService: AuthService) {}
+
+  get canManageResidents(): boolean {
+    return this.authService.getCurrentUser()?.perfil === 'ADMIN';
+  }
 
   setMode(mode: ViewMode): void {
     this.viewMode = mode;
