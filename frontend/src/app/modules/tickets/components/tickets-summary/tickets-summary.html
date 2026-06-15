@@ -5,8 +5,9 @@
       <h3>{{ total }}</h3>
       <p class="summary-trend" [ngClass]="totalTrendClass">{{ totalTrendText }}</p>
     </div>
-
-    <mat-icon>assignment</mat-icon>
+    <div class="summary-icon total-icon">
+      <lucide-icon [img]="FileText" [size]="32" [strokeWidth]="1.6" color="#4f46e5" />
+    </div>
   </article>
 
   <article class="summary-card">
@@ -15,8 +16,9 @@
       <h3>{{ open }}</h3>
       <p class="summary-trend" [ngClass]="openTrendClass">{{ openTrendText }}</p>
     </div>
-
-    <mat-icon color="warn">error_outline</mat-icon>
+    <div class="summary-icon open-icon">
+      <lucide-icon [img]="AlertCircle" [size]="32" [strokeWidth]="1.6" color="#dc2626" />
+    </div>
   </article>
 
   <article class="summary-card">
@@ -25,8 +27,9 @@
       <h3>{{ inProgress }}</h3>
       <p class="summary-trend" [ngClass]="inProgressTrendClass">{{ inProgressTrendText }}</p>
     </div>
-
-    <mat-icon>schedule</mat-icon>
+    <div class="summary-icon progress-icon">
+      <lucide-icon [img]="Clock" [size]="32" [strokeWidth]="1.6" color="#d97706" />
+    </div>
   </article>
 
   <article class="summary-card">
@@ -35,7 +38,8 @@
       <h3>{{ resolved }}</h3>
       <p class="summary-trend" [ngClass]="resolvedTrendClass">{{ resolvedTrendText }}</p>
     </div>
-
-    <mat-icon color="primary">task_alt</mat-icon>
+    <div class="summary-icon resolved-icon">
+      <lucide-icon [img]="CheckCircle2" [size]="32" [strokeWidth]="1.6" color="#059669" />
+    </div>
   </article>
 </section>

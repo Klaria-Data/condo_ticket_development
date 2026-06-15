@@ -1,0 +1,41 @@
+<section class="summary-grid">
+  <article class="summary-card">
+    <div class="summary-content">
+      <span class="summary-label">Total de Chamados</span>
+      <h3>{{ total }}</h3>
+      <p class="summary-trend positive">↑ 8% este mês</p>
+    </div>
+
+    <mat-icon>assignment</mat-icon>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-content">
+      <span class="summary-label">Abertos</span>
+      <h3>{{ open }}</h3>
+      <p class="summary-trend negative">↑ 15% esta semana</p>
+    </div>
+
+    <mat-icon color="warn">error_outline</mat-icon>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-content">
+      <span class="summary-label">Em Andamento</span>
+      <h3>{{ inProgress }}</h3>
+      <p class="summary-trend neutral">↓ 5% esta semana</p>
+    </div>
+
+    <mat-icon>schedule</mat-icon>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-content">
+      <span class="summary-label">Resolvidos</span>
+      <h3>{{ resolved }}</h3>
+      <p class="summary-trend positive">↑ 22% esta semana</p>
+    </div>
+
+    <mat-icon color="primary">task_alt</mat-icon>
+  </article>
+</section>

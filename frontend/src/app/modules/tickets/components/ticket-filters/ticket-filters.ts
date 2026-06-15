@@ -1,12 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { LucideAngularModule, Search } from 'lucide-angular';
 import { TicketFilter } from '../../../../core/models/ticket.model';
 
 @Component({
   selector: 'app-ticket-filters',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, LucideAngularModule],
   templateUrl: './ticket-filters.html',
   styleUrl: './ticket-filters.css'
 })
@@ -16,6 +17,8 @@ export class TicketFiltersComponent {
 
   @Output() searchChange = new EventEmitter<string>();
   @Output() activeFilterChange = new EventEmitter<TicketFilter>();
+
+  readonly Search = Search;
 
   filters: TicketFilter[] = ['TODOS', 'ABERTO', 'EM_ANDAMENTO', 'RESOLVIDO'];
 

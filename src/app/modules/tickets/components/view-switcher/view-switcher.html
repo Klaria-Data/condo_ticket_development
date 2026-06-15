@@ -1,0 +1,23 @@
+<div class="switcher-wrapper">
+  <span class="label">Visualizar como:</span>
+
+  <div class="switcher">
+    <button
+      type="button"
+      class="switch-btn"
+      [class.active]="selected === 'MORADOR'"
+      (click)="select('MORADOR')"
+    >
+      Morador
+    </button>
+
+    <button
+      type="button"
+      class="switch-btn"
+      [class.active]="selected === 'SINDICO'"
+      (click)="select('SINDICO')"
+    >
+      Síndico
+    </button>
+  </div>
+</div>

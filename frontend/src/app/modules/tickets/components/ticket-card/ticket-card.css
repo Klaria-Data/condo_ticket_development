@@ -133,3 +133,38 @@ h2 {
   border-radius: 12px;
   font-size: 14px;
 }
+
+.comments-toggle-button {
+  background: #10bcd6;
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 12px;
+  transition: background-color 0.2s;
+}
+
+.comments-toggle-button:hover {
+  background: #0a9aaa;
+}
+
+.comments-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #edf0f4;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,30 +1,23 @@
 <header class="header">
   <div class="left">
-    <div class="icon">🏢</div>
-
+    <div class="brand-icon">
+      <lucide-icon [img]="Building2" [size]="22" [strokeWidth]="1.8" color="#4f46e5" />
+    </div>
     <div>
-      <h1>Chamados Condomínio</h1>
+      <h1>CondoTicket</h1>
       <p>Gerencie suas solicitações</p>
     </div>
   </div>
 
   <div class="switch">
     <span>Visualizar como:</span>
-
     <div class="buttons">
-      <button
-        type="button"
-        [class.active]="viewMode === 'MORADOR'"
-        (click)="setMode('MORADOR')"
-      >
+      <button type="button" [class.active]="viewMode === 'MORADOR'" (click)="setMode('MORADOR')">
+        <lucide-icon [img]="UserRound" [size]="15" [strokeWidth]="2" />
         Morador
       </button>
-
-      <button
-        type="button"
-        [class.active]="viewMode === 'SINDICO'"
-        (click)="setMode('SINDICO')"
-      >
+      <button type="button" [class.active]="viewMode === 'SINDICO'" (click)="setMode('SINDICO')">
+        <lucide-icon [img]="ShieldCheck" [size]="15" [strokeWidth]="2" />
         Síndico
       </button>
     </div>

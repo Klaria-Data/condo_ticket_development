@@ -1,0 +1,30 @@
+<div class="page">
+  <main class="content">
+        <app-tickets-summary
+      *ngIf="viewMode === 'SINDICO'"
+      [tickets]="tickets"
+    ></app-tickets-summary>
+    <app-page-header
+      [viewMode]="viewMode"
+      (newTicket)="onNewTicket()"
+    />
+
+    <app-ticket-filters
+      [search]="search"
+      [activeFilter]="activeFilter"
+      (searchChange)="onSearchChange($event)"
+      (activeFilterChange)="onFilterChange($event)"
+    />
+
+    <app-ticket-list
+      [tickets]="filteredTickets"
+      [viewMode]="viewMode"
+    />
+  </main>
+
+  <app-new-ticket-modal
+    *ngIf="isNewTicketModalOpen"
+    (close)="closeNewTicketModal()"
+    (create)="createTicket($event)"
+  />
+</div>

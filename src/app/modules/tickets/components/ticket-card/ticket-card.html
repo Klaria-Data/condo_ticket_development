@@ -1,0 +1,49 @@
+<article class="ticket-card">
+  <div class="top-row">
+    <div class="avatar" [style.background]="ticket.avatarColor">
+      {{ initials }}
+    </div>
+
+    <div class="content">
+      <h2>{{ ticket.title }}</h2>
+      <p class="description">{{ ticket.description }}</p>
+
+      <app-status-badge
+        *ngIf="viewMode === 'MORADOR'"
+        [status]="ticket.status"
+      />
+
+      <div *ngIf="viewMode === 'SINDICO'" class="status-dropdown">
+
+<select
+  [ngModel]="ticket.status"
+  (ngModelChange)="changeStatus($event)"
+  [ngClass]="ticket.status.toLowerCase()"
+>
+
+<option value="ABERTO">Aberto</option>
+<option value="EM_ANDAMENTO">Em Andamento</option>
+<option value="RESOLVIDO">Resolvido</option>
+
+</select>
+
+</div>
+
+
+
+      <div class="meta">
+        <div class="mini-avatar" [style.background]="ticket.avatarColor">
+          {{ initials }}
+        </div>
+
+        <span>{{ ticket.residentName }}</span>
+        <span class="chip">🏠 {{ ticket.apartment }}</span>
+        <span class="chip">🕒 {{ ticket.createdAt }}</span>
+
+        <span *ngIf="viewMode === 'SINDICO' && ticket.updatedAt" class="updated">
+          ✔ Atualizado {{ ticket.updatedAt }}
+        </span>
+      </div>
+    </div>
+  </div>
+</article>

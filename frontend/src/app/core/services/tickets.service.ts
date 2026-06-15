@@ -3,7 +3,9 @@ import { Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 
 import { Ticket, TicketStatus } from '../models/ticket.model';
+import { environment } from '../../../environments/environment';
 
+/** Estrutura de um ticket retornada pela API (snake_case). */
 interface ApiTicket {
   id: number;
   usuario_id: number;
@@ -13,57 +15,67 @@ interface ApiTicket {
   status: 'ABERTO' | 'EM_ANDAMENTO' | 'RESOLVIDO';
   data_criacao: string;
   data_atualizacao: string;
+  usuario_nome: string | null;
+  unidade: string | null;
 }
 
+/** Payload para criar um novo ticket. */
 export interface CreateTicketPayload {
   titulo: string;
   descricao: string;
   imagem_url?: string | null;
 }
 
+/**
+ * Serviço de tickets — lista, cria e atualiza status dos chamados de suporte.
+ *
+ * Toda comunicação usa o token JWT injetado automaticamente pelo AuthInterceptor.
+ */
 @Injectable({ providedIn: 'root' })
 export class TicketsService {
-  private readonly apiBaseUrl = 'http://127.0.0.1:8000';
+  private readonly apiBaseUrl = environment.apiUrl;
 
   constructor(private readonly http: HttpClient) {}
 
-  listTickets(residentName: string, apartment: string): Observable<Ticket[]> {
+  /**
+   * Lista todos os tickets visíveis para o usuário autenticado.
+   * ADMIN vê todos; MORADOR vê apenas os seus.
+   */
+  listTickets(): Observable<Ticket[]> {
     return this.http.get<ApiTicket[]>(`${this.apiBaseUrl}/tickets`).pipe(
-      map((tickets) => tickets.map((ticket) => this.toUiTicket(ticket, residentName, apartment))),
+      map((tickets) => tickets.map((ticket) => this.toUiTicket(ticket))),
     );
   }
 
-  createTicket(
-    payload: CreateTicketPayload,
-    residentName: string,
-    apartment: string,
-  ): Observable<Ticket> {
+  /**
+   * Cria um novo ticket de suporte.
+   * O ticket sempre inicia com status ABERTO.
+   */
+  createTicket(payload: CreateTicketPayload): Observable<Ticket> {
     return this.http.post<ApiTicket>(`${this.apiBaseUrl}/tickets`, payload).pipe(
-      map((ticket) => this.toUiTicket(ticket, residentName, apartment)),
+      map((ticket) => this.toUiTicket(ticket)),
     );
   }
 
-  updateTicketStatus(
-    ticketId: number,
-    status: TicketStatus,
-    residentName: string,
-    apartment: string,
-  ): Observable<Ticket> {
-    console.log('[TicketsService] updateTicketStatus called:', { ticketId, status, url: `${this.apiBaseUrl}/tickets/${ticketId}/status` });
-    
+  /**
+   * Atualiza o status de um ticket seguindo o fluxo ABERTO → EM_ANDAMENTO → RESOLVIDO.
+   * Apenas usuários com perfil ADMIN podem executar esta ação.
+   */
+  updateTicketStatus(ticketId: number, status: TicketStatus): Observable<Ticket> {
     return this.http
       .put<ApiTicket>(`${this.apiBaseUrl}/tickets/${ticketId}/status`, { status })
-      .pipe(map((ticket) => this.toUiTicket(ticket, residentName, apartment)));
+      .pipe(map((ticket) => this.toUiTicket(ticket)));
   }
 
-  private toUiTicket(ticket: ApiTicket, residentName: string, apartment: string): Ticket {
+  /** Converte um ticket no formato da API para o formato usado pela UI. */
+  private toUiTicket(ticket: ApiTicket): Ticket {
     return {
       id: ticket.id,
       title: ticket.titulo,
       description: ticket.descricao,
       status: ticket.status,
-      residentName,
-      apartment,
+      residentName: ticket.usuario_nome ?? 'Desconhecido',
+      apartment: ticket.unidade ?? '---',
       createdAt: this.toShortDate(ticket.data_criacao),
       updatedAt: this.toShortDate(ticket.data_atualizacao),
       createdAtRaw: ticket.data_criacao,
@@ -72,6 +84,7 @@ export class TicketsService {
     };
   }
 
+  /** Formata uma data ISO para exibição curta (ex: "09 mai"). */
   private toShortDate(rawDate: string): string {
     const date = new Date(rawDate);
     return date.toLocaleDateString('pt-BR', {

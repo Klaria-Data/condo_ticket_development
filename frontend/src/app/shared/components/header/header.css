@@ -13,8 +13,14 @@
   align-items: center;
 }
 
-.icon {
-  font-size: 28px;
+.brand-icon {
+  width: 42px;
+  height: 42px;
+  background: #eef2ff;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 h1 {
@@ -43,13 +49,19 @@ p {
 button {
   border: none;
   background: transparent;
-  padding: 10px 16px;
+  padding: 8px 14px;
   border-radius: 8px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #64748b;
 }
 
 button.active {
   background: white;
   color: #4f46e5;
   font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }

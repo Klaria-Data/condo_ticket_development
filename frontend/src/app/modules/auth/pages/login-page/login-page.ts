@@ -2,17 +2,20 @@ import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { LucideAngularModule, Building2 } from 'lucide-angular';
 
 import { AuthService } from '../../../../core/services/auth.service';
 
 @Component({
   selector: 'app-login-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, LucideAngularModule],
   templateUrl: './login-page.html',
   styleUrl: './login-page.css',
 })
 export class LoginPageComponent {
+  readonly Building2 = Building2;
+
   email = '';
   senha = '';
   loading = false;

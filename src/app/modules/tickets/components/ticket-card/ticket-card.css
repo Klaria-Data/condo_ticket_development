@@ -1,0 +1,135 @@
+.ticket-card {
+  background: #ffffff;
+  border: 1px solid #edf0f4;
+  border-radius: 24px;
+  padding: 30px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.top-row {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.avatar {
+  width: 58px;
+  height: 58px;
+  min-width: 58px;
+  border-radius: 18px;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 22px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
+
+h2 {
+  margin: 0;
+  font-size: 22px;
+  color: #1e293b;
+}
+
+.description {
+  margin: 0;
+  color: #64748b;
+  font-size: 16px;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  color: #64748b;
+}
+
+.mini-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  padding: 10px 14px;
+  border-radius: 14px;
+}
+
+.status-dropdown select {
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 16px;
+  outline: none;
+  cursor: pointer;
+  border: 1px solid;
+}
+
+/* opções dentro do dropdown */
+
+.status-dropdown select option[value="ABERTO"] {
+  color: #dc2626;
+  background: #fff7f6;
+}
+
+.status-dropdown select option[value="EM_ANDAMENTO"] {
+  color: #f7c948;
+  background: #fff8e6;
+}
+
+.status-dropdown select option[value="RESOLVIDO"] {
+  color: #059669;
+  background: #e6f6ef;
+}
+
+/* ABERTO */
+
+.status-dropdown select.aberto {
+  background: #fff7f6;
+  border-color: #f2b4b0;
+  color: #dc2626;
+}
+
+/* EM ANDAMENTO */
+
+.status-dropdown select.em_andamento {
+  background: #fff8e6;
+  border-color: #f7c948;
+  color: #b45309;
+}
+
+/* RESOLVIDO */
+
+.status-dropdown select.resolvido {
+  background: #e6f6ef;
+  border-color: #34d399;
+  color: #059669;
+}
+
+.updated {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #e6f6ef;
+  color: #059669;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+}

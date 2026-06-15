@@ -64,3 +64,30 @@ class TicketResposta(BaseModel):
     status: StatusTicket
     data_criacao: datetime
     data_atualizacao: datetime
+
+
+class ComentarioTicketCriacao(BaseModel):
+    mensagem: str = Field(min_length=1, max_length=2000)
+
+
+class ComentarioTicketResposta(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    ticket_id: int
+    usuario_id: int
+    mensagem: str
+    data_envio: datetime
+    usuario_nome: str | None = None
+
+    @classmethod
+    def from_orm_with_usuario(cls, comentario):
+        """Helper para incluir o nome do usuário na resposta."""
+        return cls(
+            id=comentario.id,
+            ticket_id=comentario.ticket_id,
+            usuario_id=comentario.usuario_id,
+            mensagem=comentario.mensagem,
+            data_envio=comentario.data_envio,
+            usuario_nome=comentario.usuario.nome if comentario.usuario else None,
+        )

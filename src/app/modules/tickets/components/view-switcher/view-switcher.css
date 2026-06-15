@@ -1,0 +1,36 @@
+.switcher-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.label {
+  color: #64748b;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.switcher {
+  display: flex;
+  background: #eef2f7;
+  padding: 6px;
+  border-radius: 16px;
+  gap: 6px;
+}
+
+.switch-btn {
+  border: none;
+  background: transparent;
+  padding: 12px 22px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.switch-btn.active {
+  background: #ffffff;
+  color: #4f46e5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
