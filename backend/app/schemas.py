@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from .models import PerfilUsuario, StatusTicket
+from .models import PerfilUsuario, StatusReserva, StatusTicket
 
 
 class UsuarioRegistro(BaseModel):
@@ -164,6 +164,9 @@ class ReservaLocalResposta(BaseModel):
     observacao: str | None
     data_criacao: datetime
 
+    status: StatusReserva
+    prazo_confirmacao: datetime | None
+
     @classmethod
     def from_orm_with_relations(cls, reserva):
         return cls(
@@ -177,4 +180,18 @@ class ReservaLocalResposta(BaseModel):
             fim=reserva.fim,
             observacao=reserva.observacao,
             data_criacao=reserva.data_criacao,
+            status=reserva.status,
+            prazo_confirmacao=reserva.prazo_confirmacao,
         )
+
+class ReservaDashboardResposta(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    local_id: int
+    local_nome: str
+    inicio: datetime
+    fim: datetime
+    status: StatusReserva
+    prazo_confirmacao: datetime | None
+    posicao_fila: int | None = None

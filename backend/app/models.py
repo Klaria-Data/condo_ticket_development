@@ -142,6 +142,13 @@ class ReservaLocal(Base):
 
     local: Mapped["LocalAgendavel"] = relationship(back_populates="reservas")
     usuario: Mapped["Usuario"] = relationship(back_populates="reservas")
+    
+    status: Mapped[StatusReserva] = mapped_column(
+        Enum(StatusReserva, name="status_reserva_enum"), 
+        default=StatusReserva.AGUARDANDO_FILA, 
+        nullable=False
+    )
+    prazo_confirmacao: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class ConviteMorador(Base):
@@ -159,3 +166,11 @@ class ConviteMorador(Base):
     criado_por_id: Mapped[int] = mapped_column(ForeignKey("USUARIO.id"), nullable=False)
 
     criado_por: Mapped["Usuario"] = relationship(back_populates="convites_enviados")
+
+class StatusReserva(str, enum.Enum):
+    AGUARDANDO_FILA = "AGUARDANDO_FILA"           
+    AGENDADO = "AGENDADO"                         
+    PENDENTE_CONFIRMACAO = "PENDENTE_CONFIRMACAO" 
+    CONFIRMADO = "CONFIRMADO"                     
+    EXPIRADO = "EXPIRADO"                         
+    LIVRE_DEMANDA = "LIVRE_DEMANDA"               

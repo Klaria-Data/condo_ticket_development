@@ -1,5 +1,7 @@
 """FastAPI entrypoint with auth and ticket creation endpoints."""
 
+import asyncio
+from contextlib import asynccontextmanager
 import os
 import hashlib
 import secrets
@@ -17,10 +19,33 @@ from sqlalchemy.orm import Session, joinedload
 from . import models, schemas
 from .database import Base, engine, get_db
 
+# Loop infinito não-bloqueante
+async def worker_reservas():
+    while True:
+        # Envolve a função síncrona do SQLAlchemy no threadpool do Asyncio 
+        # para não congelar o servidor web enquanto faz as queries
+        await asyncio.to_thread(processar_filas_reserva)
+        
+        # Define o intervalo (ex: roda a cada 60 segundos)
+        await asyncio.sleep(60)
+
+# Gerenciador do ciclo de vida
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Executa no startup: cria a tarefa em background
+    task = asyncio.create_task(worker_reservas())
+    print("[Sistema] Worker de filas de reserva iniciado.")
+    
+    yield # O servidor FastAPI roda aqui
+    
+    # Executa no shutdown: cancela a tarefa
+    task.cancel()
+    print("[Sistema] Worker de filas de reserva encerrado.")
+
 # Create tables on startup for the initial project bootstrap.
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="CondoTicket API", version="0.1.0")
+app = FastAPI(title="CondoTicket API", version="0.1.0", lifespan=lifespan)
 
 allowed_origins = os.getenv(
     "CORS_ALLOW_ORIGINS",
@@ -503,31 +528,44 @@ def criar_agendamento(
     current_user: models.Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    local = (
-        db.query(models.LocalAgendavel)
-        .filter(
-            models.LocalAgendavel.id == payload.local_id,
-            models.LocalAgendavel.ativo.is_(True),
-        )
-        .first()
-    )
+    local = db.query(models.LocalAgendavel).filter(
+        models.LocalAgendavel.id == payload.local_id,
+        models.LocalAgendavel.ativo.is_(True),
+    ).first()
+    
     if not local:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local agendavel nao encontrado")
 
-    reserva_conflitante = (
-        db.query(models.ReservaLocal)
-        .filter(
-            models.ReservaLocal.local_id == payload.local_id,
-            models.ReservaLocal.inicio < payload.fim,
-            models.ReservaLocal.fim > payload.inicio,
-        )
-        .first()
+    concorrentes = db.query(models.ReservaLocal).filter(
+        models.ReservaLocal.local_id == payload.local_id,
+        models.ReservaLocal.inicio < payload.fim,
+        models.ReservaLocal.fim > payload.inicio,
+        models.ReservaLocal.status != models.StatusReserva.EXPIRADO
+    ).all()
+
+    reserva_ativa = any(
+        r.status in [
+            models.StatusReserva.AGENDADO, 
+            models.StatusReserva.PENDENTE_CONFIRMACAO, 
+            models.StatusReserva.CONFIRMADO,
+            models.StatusReserva.LIVRE_DEMANDA
+        ] for r in concorrentes
     )
-    if reserva_conflitante:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Horario indisponivel para este local",
-        )
+    
+    tem_fila = any(r.status == models.StatusReserva.AGUARDANDO_FILA for r in concorrentes)
+
+    tempo_para_evento = payload.inicio - datetime.utcnow()
+
+    if not reserva_ativa and not tem_fila:
+        if tempo_para_evento <= timedelta(hours=48):
+            status_inicial = models.StatusReserva.LIVRE_DEMANDA
+            prazo = None
+        else:
+            status_inicial = models.StatusReserva.AGENDADO
+            prazo = None
+    else:
+        status_inicial = models.StatusReserva.AGUARDANDO_FILA
+        prazo = None
 
     nova_reserva = models.ReservaLocal(
         local_id=payload.local_id,
@@ -535,6 +573,8 @@ def criar_agendamento(
         inicio=payload.inicio,
         fim=payload.fim,
         observacao=payload.observacao.strip() if payload.observacao else None,
+        status=status_inicial,
+        prazo_confirmacao=prazo
     )
 
     db.add(nova_reserva)
@@ -542,3 +582,149 @@ def criar_agendamento(
     db.refresh(nova_reserva)
 
     return schemas.ReservaLocalResposta.from_orm_with_relations(nova_reserva)
+
+
+
+@app.put("/agendamentos/{reserva_id}/confirmar", response_model=schemas.ReservaLocalResposta)
+def confirmar_agendamento(
+    reserva_id: int,
+    current_user: models.Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    reserva = db.query(models.ReservaLocal).filter(models.ReservaLocal.id == reserva_id).first()
+    
+    if not reserva:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva nao encontrada")
+        
+    if reserva.usuario_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas o locatário pode confirmar a reserva")
+
+    if reserva.status != models.StatusReserva.PENDENTE_CONFIRMACAO:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=f"Reserva nao esta pendente de confirmacao. Status atual: {reserva.status}"
+        )
+        
+    if reserva.prazo_confirmacao and datetime.utcnow() > reserva.prazo_confirmacao:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Prazo de confirmacao expirado")
+
+    reserva.status = models.StatusReserva.CONFIRMADO
+    reserva.prazo_confirmacao = None # Limpa o cronômetro
+    
+    db.commit()
+    db.refresh(reserva)
+    
+    return schemas.ReservaLocalResposta.from_orm_with_relations(reserva)
+
+def processar_filas_reserva():
+    """
+    Executa a máquina de estados das reservas.
+    1. Expira quem perdeu o prazo.
+    2. Abre a janela de confirmação de 48h.
+    3. Promove quem está na fila caso a vaga esteja livre.
+    """
+    db: Session = SessionLocal()
+    try:
+        now = datetime.utcnow()
+
+        omissos = db.query(models.ReservaLocal).filter(
+            models.ReservaLocal.status == models.StatusReserva.PENDENTE_CONFIRMACAO,
+            models.ReservaLocal.prazo_confirmacao < now
+        ).all()
+
+        for reserva in omissos:
+            reserva.status = models.StatusReserva.EXPIRADO
+            reserva.prazo_confirmacao = None
+        
+        db.commit()
+
+        limite_48h = now + timedelta(hours=48)
+        agendados = db.query(models.ReservaLocal).filter(
+            models.ReservaLocal.status == models.StatusReserva.AGENDADO,
+            models.ReservaLocal.inicio <= limite_48h
+        ).all()
+
+        for reserva in agendados:
+            reserva.status = models.StatusReserva.PENDENTE_CONFIRMACAO
+            reserva.prazo_confirmacao = now + timedelta(hours=12)
+
+        db.commit()
+
+        aguardando = db.query(models.ReservaLocal).filter(
+            models.ReservaLocal.status == models.StatusReserva.AGUARDANDO_FILA
+        ).order_by(models.ReservaLocal.data_criacao.asc()).all()
+
+        for fila in aguardando:            
+            dono_ativo = db.query(models.ReservaLocal).filter(
+                models.ReservaLocal.local_id == fila.local_id,
+                models.ReservaLocal.inicio < fila.fim,
+                models.ReservaLocal.fim > fila.inicio,
+                models.ReservaLocal.status.in_([
+                    models.StatusReserva.AGENDADO,
+                    models.StatusReserva.PENDENTE_CONFIRMACAO,
+                    models.StatusReserva.CONFIRMADO
+                ])
+            ).first()
+
+            if not dono_ativo:
+                tempo_para_evento = fila.inicio - now
+                if tempo_para_evento <= timedelta(hours=48):
+                    fila.status = models.StatusReserva.PENDENTE_CONFIRMACAO
+                    fila.prazo_confirmacao = now + timedelta(hours=12)
+                else:
+                    fila.status = models.StatusReserva.AGENDADO
+                
+                db.commit() 
+
+    except Exception as e:
+        print(f"[Worker Error] Falha ao processar reservas: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
+@app.get("/agendamentos/me", response_model=list[schemas.ReservaDashboardResposta])
+def listar_minhas_reservas(
+    current_user: models.Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    reservas_usuario = (
+        db.query(models.ReservaLocal)
+        .options(joinedload(models.ReservaLocal.local))
+        .filter(models.ReservaLocal.usuario_id == current_user.id)
+        .order_by(models.ReservaLocal.inicio.asc())
+        .all()
+    )
+
+    resultados = []
+    
+    for reserva in reservas_usuario:
+        posicao = None
+        
+        if reserva.status == models.StatusReserva.AGUARDANDO_FILA:
+            # Conta concorrentes no mesmo slot que chegaram primeiro
+            concorrentes_anteriores = db.query(models.ReservaLocal).filter(
+                models.ReservaLocal.local_id == reserva.local_id,
+                models.ReservaLocal.inicio < reserva.fim,
+                models.ReservaLocal.fim > reserva.inicio,
+                models.ReservaLocal.status == models.StatusReserva.AGUARDANDO_FILA,
+                models.ReservaLocal.data_criacao < reserva.data_criacao
+            ).count()
+            
+            # A posição é o número de pessoas na frente + 1
+            posicao = concorrentes_anteriores + 1
+
+        resultados.append(
+            schemas.ReservaDashboardResposta(
+                id=reserva.id,
+                local_id=reserva.local_id,
+                local_nome=reserva.local.nome if reserva.local else "Desconhecido",
+                inicio=reserva.inicio,
+                fim=reserva.fim,
+                status=reserva.status,
+                prazo_confirmacao=reserva.prazo_confirmacao,
+                posicao_fila=posicao
+            )
+        )
+
+    return resultados
