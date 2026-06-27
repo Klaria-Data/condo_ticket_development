@@ -260,6 +260,261 @@ button:disabled {
   opacity: 0.6;
 }
 
+/* --- Painel "Minhas Reservas" --- */
+.my-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.my-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.my-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  background: #fcfdff;
+}
+
+.my-card.action {
+  border-color: #f5b86b;
+  background: #fffaf2;
+}
+
+.my-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badge.sm {
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.badge.ok {
+  color: #027a48;
+  background: #dcfae6;
+}
+
+.badge.warn {
+  color: #b54708;
+  background: #fef0c7;
+}
+
+.badge.danger {
+  color: #b42318;
+  background: #fee4e2;
+}
+
+.badge.info {
+  color: #3538cd;
+  background: #e0eaff;
+}
+
+.my-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.countdown {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff4e6;
+  color: #b54708;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.countdown strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.my-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn.confirm {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.btn.ghost {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.btn.danger {
+  background: #fee4e2;
+  color: #b42318;
+}
+
+.sm-btn {
+  margin-top: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+/* --- Convidados no formulário --- */
+.guests-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 4px 0 8px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 0;
+  color: #4f46e5;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.guest-rows {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.guest-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 32px;
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.guest-photo {
+  width: 44px;
+  height: 44px;
+}
+
+.guest-photo img {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.photo-pick {
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.photo-pick.small {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  margin-top: -22px;
+  margin-left: 22px;
+  background: #ffffff;
+}
+
+.guest-fields {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.guest-fields input {
+  margin: 0;
+}
+
+.field-error {
+  color: #b42318;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.icon-button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: #fee4e2;
+  color: #b42318;
+  cursor: pointer;
+}
+
+.guest-list {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  color: #64748b;
+  font-size: 12px;
+}
+
 @media (max-width: 900px) {
   .layout {
     grid-template-columns: 1fr;

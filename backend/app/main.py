@@ -17,7 +17,7 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session, joinedload
 
 from . import models, schemas
-from .database import Base, engine, get_db
+from .database import Base, SessionLocal, engine, get_db
 
 # Loop infinito não-bloqueante
 async def worker_reservas():
@@ -68,6 +68,29 @@ JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
 INVITE_EXPIRE_DAYS = int(os.getenv("INVITE_EXPIRE_DAYS", "7"))
 FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://127.0.0.1:4200")
+
+# --- Parametros da maquina de estados de reservas ---
+# Janela em que o detentor entra em "Pendente Confirmacao" antes do evento.
+RESERVA_JANELA_CONFIRMACAO_HORAS = int(os.getenv("RESERVA_JANELA_CONFIRMACAO_HORAS", "48"))
+# Prazo do detentor original para confirmar apos entrar na janela de 48h.
+RESERVA_PRAZO_INICIAL_HORAS = int(os.getenv("RESERVA_PRAZO_INICIAL_HORAS", "24"))
+# Prazo restrito de cada proximo da fila promovido (confirmacao em cascata).
+RESERVA_PRAZO_CASCATA_HORAS = int(os.getenv("RESERVA_PRAZO_CASCATA_HORAS", "12"))
+# Janela considerada ao recalcular a prioridade da fila por historico de uso.
+RESERVA_HISTORICO_MESES = int(os.getenv("RESERVA_HISTORICO_MESES", "6"))
+
+# Status que representam um detentor "ativo" do slot (segurando a vaga).
+STATUS_RESERVA_ATIVOS = (
+    models.StatusReserva.AGENDADO,
+    models.StatusReserva.PENDENTE_CONFIRMACAO,
+    models.StatusReserva.CONFIRMADO,
+    models.StatusReserva.LIVRE_DEMANDA,
+)
+# Status terminais: a reserva nao concorre mais pelo slot.
+STATUS_RESERVA_TERMINAIS = (
+    models.StatusReserva.EXPIRADO,
+    models.StatusReserva.CANCELADO,
+)
 
 
 def hash_password(password: str) -> str:
@@ -503,19 +526,95 @@ def criar_local_agendavel(
     return novo_local
 
 
+def reservas_concorrentes(db, local_id, inicio, fim, ignorar_id=None):
+    """Reservas (nao terminais) que disputam o mesmo slot por sobreposicao de horario."""
+    query = db.query(models.ReservaLocal).filter(
+        models.ReservaLocal.local_id == local_id,
+        models.ReservaLocal.inicio < fim,
+        models.ReservaLocal.fim > inicio,
+        models.ReservaLocal.status.notin_(STATUS_RESERVA_TERMINAIS),
+    )
+    if ignorar_id is not None:
+        query = query.filter(models.ReservaLocal.id != ignorar_id)
+    return query.all()
+
+
+def decidir_status_inicial(db, local_id, inicio, fim, ignorar_id=None):
+    """Decide o status de entrada de uma reserva conforme a disputa pelo slot.
+
+    - Slot livre e dentro de 48h  -> LIVRE_DEMANDA (confirmacao instantanea, FCFS).
+    - Slot livre e fora de 48h    -> AGENDADO (detentor aguardando a janela).
+    - Slot ja disputado           -> AGUARDANDO_FILA (entra na fila).
+    """
+    concorrentes = reservas_concorrentes(db, local_id, inicio, fim, ignorar_id)
+    ha_detentor = any(r.status in STATUS_RESERVA_ATIVOS for r in concorrentes)
+    ha_fila = any(r.status == models.StatusReserva.AGUARDANDO_FILA for r in concorrentes)
+
+    if ha_detentor or ha_fila:
+        return models.StatusReserva.AGUARDANDO_FILA
+
+    if (inicio - datetime.utcnow()) <= timedelta(hours=RESERVA_JANELA_CONFIRMACAO_HORAS):
+        return models.StatusReserva.LIVRE_DEMANDA
+    return models.StatusReserva.AGENDADO
+
+
+def contar_reservas_usuario(db, usuario_id, desde):
+    """Conta reservas efetivas do usuario (por inicio do evento) a partir de uma data."""
+    return (
+        db.query(models.ReservaLocal)
+        .filter(
+            models.ReservaLocal.usuario_id == usuario_id,
+            models.ReservaLocal.inicio >= desde,
+            models.ReservaLocal.status.in_(STATUS_RESERVA_ATIVOS),
+        )
+        .count()
+    )
+
+
+def chave_prioridade_fila(db, reserva, agora):
+    """Chave de ordenacao da fila por historico de uso.
+
+    Moradores com 0 reservas no mes atual assumem o topo; desempate por menos
+    reservas na janela de 6 meses e, por fim, pela ordem cronologica original.
+    """
+    inicio_mes = agora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    janela = agora - timedelta(days=30 * RESERVA_HISTORICO_MESES)
+    reservas_mes = contar_reservas_usuario(db, reserva.usuario_id, inicio_mes)
+    reservas_janela = contar_reservas_usuario(db, reserva.usuario_id, janela)
+    return (reservas_mes, reservas_janela, reserva.data_criacao)
+
+
+def ordenar_fila(db, reservas, agora):
+    return sorted(reservas, key=lambda r: chave_prioridade_fila(db, r, agora))
+
+
 @app.get("/agendamentos", response_model=list[schemas.ReservaLocalResposta])
 def listar_agendamentos(
     current_user: models.Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Agenda compartilhada: mostra apenas reservas que efetivamente ocupam o slot.
     reservas = (
         db.query(models.ReservaLocal)
-        .options(joinedload(models.ReservaLocal.local), joinedload(models.ReservaLocal.usuario))
+        .options(
+            joinedload(models.ReservaLocal.local),
+            joinedload(models.ReservaLocal.usuario),
+            joinedload(models.ReservaLocal.convidados),
+        )
+        .filter(models.ReservaLocal.status.in_(STATUS_RESERVA_ATIVOS))
         .order_by(models.ReservaLocal.inicio.asc())
         .all()
     )
 
-    return [schemas.ReservaLocalResposta.from_orm_with_relations(reserva) for reserva in reservas]
+    is_admin = current_user.perfil == models.PerfilUsuario.ADMIN
+    return [
+        schemas.ReservaLocalResposta.from_orm_with_relations(
+            reserva,
+            # Dados de convidados (CPF) so para o dono da reserva ou para o sindico.
+            incluir_convidados=is_admin or reserva.usuario_id == current_user.id,
+        )
+        for reserva in reservas
+    ]
 
 
 @app.post(
@@ -532,40 +631,11 @@ def criar_agendamento(
         models.LocalAgendavel.id == payload.local_id,
         models.LocalAgendavel.ativo.is_(True),
     ).first()
-    
+
     if not local:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local agendavel nao encontrado")
 
-    concorrentes = db.query(models.ReservaLocal).filter(
-        models.ReservaLocal.local_id == payload.local_id,
-        models.ReservaLocal.inicio < payload.fim,
-        models.ReservaLocal.fim > payload.inicio,
-        models.ReservaLocal.status != models.StatusReserva.EXPIRADO
-    ).all()
-
-    reserva_ativa = any(
-        r.status in [
-            models.StatusReserva.AGENDADO, 
-            models.StatusReserva.PENDENTE_CONFIRMACAO, 
-            models.StatusReserva.CONFIRMADO,
-            models.StatusReserva.LIVRE_DEMANDA
-        ] for r in concorrentes
-    )
-    
-    tem_fila = any(r.status == models.StatusReserva.AGUARDANDO_FILA for r in concorrentes)
-
-    tempo_para_evento = payload.inicio - datetime.utcnow()
-
-    if not reserva_ativa and not tem_fila:
-        if tempo_para_evento <= timedelta(hours=48):
-            status_inicial = models.StatusReserva.LIVRE_DEMANDA
-            prazo = None
-        else:
-            status_inicial = models.StatusReserva.AGENDADO
-            prazo = None
-    else:
-        status_inicial = models.StatusReserva.AGUARDANDO_FILA
-        prazo = None
+    status_inicial = decidir_status_inicial(db, payload.local_id, payload.inicio, payload.fim)
 
     nova_reserva = models.ReservaLocal(
         local_id=payload.local_id,
@@ -574,7 +644,10 @@ def criar_agendamento(
         fim=payload.fim,
         observacao=payload.observacao.strip() if payload.observacao else None,
         status=status_inicial,
-        prazo_confirmacao=prazo
+        prazo_confirmacao=None,
+        convidados=[
+            models.Convidado(nome=c.nome.strip(), cpf=c.cpf) for c in payload.convidados
+        ],
     )
 
     db.add(nova_reserva)
@@ -592,89 +665,221 @@ def confirmar_agendamento(
     db: Session = Depends(get_db),
 ):
     reserva = db.query(models.ReservaLocal).filter(models.ReservaLocal.id == reserva_id).first()
-    
+
     if not reserva:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva nao encontrada")
-        
-    if reserva.usuario_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas o locatário pode confirmar a reserva")
 
-    if reserva.status != models.StatusReserva.PENDENTE_CONFIRMACAO:
+    if reserva.usuario_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas o locatario pode confirmar a reserva")
+
+    # LIVRE_DEMANDA: fila esgotada -> confirmacao instantanea (First-Come, First-Served).
+    # PENDENTE_CONFIRMACAO: precisa confirmar dentro do prazo (cronometro regressivo).
+    if reserva.status == models.StatusReserva.PENDENTE_CONFIRMACAO:
+        if reserva.prazo_confirmacao and datetime.utcnow() > reserva.prazo_confirmacao:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Prazo de confirmacao expirado")
+    elif reserva.status != models.StatusReserva.LIVRE_DEMANDA:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail=f"Reserva nao esta pendente de confirmacao. Status atual: {reserva.status}"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Reserva nao pode ser confirmada. Status atual: {reserva.status.value}",
         )
-        
-    if reserva.prazo_confirmacao and datetime.utcnow() > reserva.prazo_confirmacao:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Prazo de confirmacao expirado")
 
     reserva.status = models.StatusReserva.CONFIRMADO
-    reserva.prazo_confirmacao = None # Limpa o cronômetro
-    
+    reserva.prazo_confirmacao = None  # Limpa o cronometro
+
     db.commit()
     db.refresh(reserva)
-    
+
+    return schemas.ReservaLocalResposta.from_orm_with_relations(reserva)
+
+
+@app.put("/agendamentos/{reserva_id}", response_model=schemas.ReservaLocalResposta)
+def atualizar_agendamento(
+    reserva_id: int,
+    payload: schemas.ReservaLocalAtualizacao,
+    current_user: models.Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Edicao da reserva pelo dono (parte do CRUD).
+
+    Observacao e convidados podem ser editados enquanto a reserva nao estiver
+    confirmada/encerrada. Mudar local/horario so e permitido antes da reserva
+    entrar na janela de confirmacao (status AGENDADO ou AGUARDANDO_FILA), pois
+    altera a disputa pelo slot e exige recalculo do status.
+    """
+    reserva = (
+        db.query(models.ReservaLocal)
+        .options(joinedload(models.ReservaLocal.convidados))
+        .filter(models.ReservaLocal.id == reserva_id)
+        .first()
+    )
+    if not reserva:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva nao encontrada")
+    if reserva.usuario_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas o dono pode editar a reserva")
+    if reserva.status in STATUS_RESERVA_TERMINAIS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reserva encerrada nao pode ser editada")
+
+    novo_local = payload.local_id if payload.local_id is not None else reserva.local_id
+    novo_inicio = payload.inicio if payload.inicio is not None else reserva.inicio
+    novo_fim = payload.fim if payload.fim is not None else reserva.fim
+    mudou_slot = (
+        novo_local != reserva.local_id
+        or novo_inicio != reserva.inicio
+        or novo_fim != reserva.fim
+    )
+
+    if mudou_slot:
+        if reserva.status not in (
+            models.StatusReserva.AGENDADO,
+            models.StatusReserva.AGUARDANDO_FILA,
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Local/horario so podem ser alterados antes da janela de confirmacao",
+            )
+        if novo_fim <= novo_inicio:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Horario final deve ser posterior ao inicial")
+
+        local = db.query(models.LocalAgendavel).filter(
+            models.LocalAgendavel.id == novo_local,
+            models.LocalAgendavel.ativo.is_(True),
+        ).first()
+        if not local:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local agendavel nao encontrado")
+
+        reserva.local_id = novo_local
+        reserva.inicio = novo_inicio
+        reserva.fim = novo_fim
+        reserva.status = decidir_status_inicial(db, novo_local, novo_inicio, novo_fim, ignorar_id=reserva.id)
+        reserva.prazo_confirmacao = None
+
+    if payload.observacao is not None:
+        reserva.observacao = payload.observacao.strip() or None
+
+    if payload.convidados is not None:
+        reserva.convidados = [
+            models.Convidado(nome=c.nome.strip(), cpf=c.cpf) for c in payload.convidados
+        ]
+
+    db.commit()
+    db.refresh(reserva)
+    return schemas.ReservaLocalResposta.from_orm_with_relations(reserva)
+
+
+@app.delete("/agendamentos/{reserva_id}", response_model=schemas.ReservaLocalResposta)
+def cancelar_agendamento(
+    reserva_id: int,
+    current_user: models.Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Cancela uma reserva.
+
+    - Dono: pode cancelar a propria reserva enquanto ela nao estiver encerrada.
+    - Sindico (ADMIN): Hard Cancel -> revoga QUALQUER reserva em QUALQUER estado,
+      ignorando regras de tempo e fila. A vaga liberada e repassada ao proximo da
+      fila pelo worker em background.
+    """
+    reserva = db.query(models.ReservaLocal).filter(models.ReservaLocal.id == reserva_id).first()
+    if not reserva:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva nao encontrada")
+
+    is_admin = current_user.perfil == models.PerfilUsuario.ADMIN
+    if not is_admin:
+        if reserva.usuario_id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas o dono ou o sindico podem cancelar")
+        if reserva.status in STATUS_RESERVA_TERMINAIS:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reserva ja encerrada")
+
+    reserva.status = models.StatusReserva.CANCELADO
+    reserva.prazo_confirmacao = None
+    db.commit()
+    db.refresh(reserva)
     return schemas.ReservaLocalResposta.from_orm_with_relations(reserva)
 
 def processar_filas_reserva():
-    """
-    Executa a máquina de estados das reservas.
-    1. Expira quem perdeu o prazo.
-    2. Abre a janela de confirmação de 48h.
-    3. Promove quem está na fila caso a vaga esteja livre.
+    """Executa a maquina de estados das reservas (worker em background).
+
+    1. Expira detentores que nao confirmaram dentro do prazo (cronometro vencido).
+    2. Abre a janela de confirmacao 48h antes do evento (timer inicial).
+    3. Para cada slot sem detentor ativo, promove o topo da fila recalculada por
+       historico de uso, iniciando um timer restrito (cascata).
+    4. Liberacao de fila: se a fila esgota dentro de 48h e ninguem confirma, o
+       slot vira LIVRE_DEMANDA (First-Come, First-Served).
     """
     db: Session = SessionLocal()
     try:
         now = datetime.utcnow()
+        limite_48h = now + timedelta(hours=RESERVA_JANELA_CONFIRMACAO_HORAS)
 
+        # 1. Expira quem perdeu o prazo de confirmacao.
         omissos = db.query(models.ReservaLocal).filter(
             models.ReservaLocal.status == models.StatusReserva.PENDENTE_CONFIRMACAO,
-            models.ReservaLocal.prazo_confirmacao < now
+            models.ReservaLocal.prazo_confirmacao.isnot(None),
+            models.ReservaLocal.prazo_confirmacao < now,
         ).all()
-
         for reserva in omissos:
             reserva.status = models.StatusReserva.EXPIRADO
             reserva.prazo_confirmacao = None
-        
         db.commit()
 
-        limite_48h = now + timedelta(hours=48)
+        # 2. Detentor entra na janela de 48h -> precisa confirmar (timer inicial).
         agendados = db.query(models.ReservaLocal).filter(
             models.ReservaLocal.status == models.StatusReserva.AGENDADO,
-            models.ReservaLocal.inicio <= limite_48h
+            models.ReservaLocal.inicio <= limite_48h,
+            models.ReservaLocal.inicio > now,
         ).all()
-
         for reserva in agendados:
             reserva.status = models.StatusReserva.PENDENTE_CONFIRMACAO
-            reserva.prazo_confirmacao = now + timedelta(hours=12)
-
+            reserva.prazo_confirmacao = now + timedelta(hours=RESERVA_PRAZO_INICIAL_HORAS)
         db.commit()
 
-        aguardando = db.query(models.ReservaLocal).filter(
-            models.ReservaLocal.status == models.StatusReserva.AGUARDANDO_FILA
-        ).order_by(models.ReservaLocal.data_criacao.asc()).all()
+        # 3. Promove a fila por historico de uso quando o slot fica sem detentor.
+        aguardando = (
+            db.query(models.ReservaLocal)
+            .filter(
+                models.ReservaLocal.status == models.StatusReserva.AGUARDANDO_FILA,
+                models.ReservaLocal.inicio > now,
+            )
+            .order_by(models.ReservaLocal.data_criacao.asc())
+            .all()
+        )
 
-        for fila in aguardando:            
+        ja_processados: set[int] = set()
+        for fila in aguardando:
+            if fila.id in ja_processados:
+                continue
+
+            # Todos os concorrentes em fila para o mesmo slot.
+            concorrentes = [
+                r for r in aguardando
+                if r.local_id == fila.local_id and r.inicio < fila.fim and r.fim > fila.inicio
+            ]
+            for r in concorrentes:
+                ja_processados.add(r.id)
+
             dono_ativo = db.query(models.ReservaLocal).filter(
                 models.ReservaLocal.local_id == fila.local_id,
                 models.ReservaLocal.inicio < fila.fim,
                 models.ReservaLocal.fim > fila.inicio,
-                models.ReservaLocal.status.in_([
-                    models.StatusReserva.AGENDADO,
-                    models.StatusReserva.PENDENTE_CONFIRMACAO,
-                    models.StatusReserva.CONFIRMADO
-                ])
+                models.ReservaLocal.status.in_(STATUS_RESERVA_ATIVOS),
             ).first()
+            if dono_ativo:
+                continue
 
-            if not dono_ativo:
-                tempo_para_evento = fila.inicio - now
-                if tempo_para_evento <= timedelta(hours=48):
-                    fila.status = models.StatusReserva.PENDENTE_CONFIRMACAO
-                    fila.prazo_confirmacao = now + timedelta(hours=12)
-                else:
-                    fila.status = models.StatusReserva.AGENDADO
-                
-                db.commit() 
+            # Sem detentor: o topo da fila recalculada assume a vaga.
+            proximo = ordenar_fila(db, concorrentes, now)[0]
+            if (proximo.inicio - now) <= timedelta(hours=RESERVA_JANELA_CONFIRMACAO_HORAS):
+                proximo.status = models.StatusReserva.PENDENTE_CONFIRMACAO
+                proximo.prazo_confirmacao = now + timedelta(hours=RESERVA_PRAZO_CASCATA_HORAS)
+            else:
+                proximo.status = models.StatusReserva.AGENDADO
+                proximo.prazo_confirmacao = None
+        db.commit()
+
+        # Liberacao de fila: quando o slot esgota (todos EXPIRADO/sem fila) e ja
+        # esta dentro de 48h, nao ha mais detentor ativo. A vaga fica livre e a
+        # proxima SOLICITACAO entra direto como LIVRE_DEMANDA (FCFS) com
+        # confirmacao instantanea -- ver decidir_status_inicial().
 
     except Exception as e:
         print(f"[Worker Error] Falha ao processar reservas: {e}")
@@ -690,29 +895,35 @@ def listar_minhas_reservas(
 ):
     reservas_usuario = (
         db.query(models.ReservaLocal)
-        .options(joinedload(models.ReservaLocal.local))
+        .options(
+            joinedload(models.ReservaLocal.local),
+            joinedload(models.ReservaLocal.convidados),
+        )
         .filter(models.ReservaLocal.usuario_id == current_user.id)
         .order_by(models.ReservaLocal.inicio.asc())
         .all()
     )
 
+    now = datetime.utcnow()
     resultados = []
-    
+
     for reserva in reservas_usuario:
         posicao = None
-        
+
         if reserva.status == models.StatusReserva.AGUARDANDO_FILA:
-            # Conta concorrentes no mesmo slot que chegaram primeiro
-            concorrentes_anteriores = db.query(models.ReservaLocal).filter(
+            # Posicao recalculada dinamicamente pela prioridade por historico de uso
+            # (quem tem 0 reservas no mes atual vai ao topo), nao pela ordem cronologica.
+            concorrentes = db.query(models.ReservaLocal).filter(
                 models.ReservaLocal.local_id == reserva.local_id,
                 models.ReservaLocal.inicio < reserva.fim,
                 models.ReservaLocal.fim > reserva.inicio,
                 models.ReservaLocal.status == models.StatusReserva.AGUARDANDO_FILA,
-                models.ReservaLocal.data_criacao < reserva.data_criacao
-            ).count()
-            
-            # A posição é o número de pessoas na frente + 1
-            posicao = concorrentes_anteriores + 1
+            ).all()
+            ordenados = ordenar_fila(db, concorrentes, now)
+            posicao = next(
+                (i + 1 for i, r in enumerate(ordenados) if r.id == reserva.id),
+                None,
+            )
 
         resultados.append(
             schemas.ReservaDashboardResposta(
@@ -723,7 +934,8 @@ def listar_minhas_reservas(
                 fim=reserva.fim,
                 status=reserva.status,
                 prazo_confirmacao=reserva.prazo_confirmacao,
-                posicao_fila=posicao
+                posicao_fila=posicao,
+                total_convidados=len(reserva.convidados),
             )
         )
 

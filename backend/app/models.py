@@ -20,6 +20,16 @@ class StatusTicket(str, enum.Enum):
     RESOLVIDO = "RESOLVIDO"
 
 
+class StatusReserva(str, enum.Enum):
+    AGUARDANDO_FILA = "AGUARDANDO_FILA"            # Concorre por um slot ja disputado; aguarda na fila.
+    AGENDADO = "AGENDADO"                          # Detentor atual do slot, fora da janela de 48h.
+    PENDENTE_CONFIRMACAO = "PENDENTE_CONFIRMACAO"  # Dentro da janela: precisa confirmar antes do prazo.
+    CONFIRMADO = "CONFIRMADO"                       # Reserva confirmada pelo locatario.
+    EXPIRADO = "EXPIRADO"                           # Nao confirmou no prazo; perdeu a vez na fila.
+    LIVRE_DEMANDA = "LIVRE_DEMANDA"                 # Fila esgotada: slot disponivel em First-Come-First-Served.
+    CANCELADO = "CANCELADO"                         # Revogado (Hard Cancel do sindico ou cancelamento do dono).
+
+
 class Usuario(Base):
     __tablename__ = "USUARIO"
 
@@ -142,7 +152,10 @@ class ReservaLocal(Base):
 
     local: Mapped["LocalAgendavel"] = relationship(back_populates="reservas")
     usuario: Mapped["Usuario"] = relationship(back_populates="reservas")
-    
+    convidados: Mapped[list["Convidado"]] = relationship(
+        back_populates="reserva", cascade="all, delete-orphan"
+    )
+
     status: Mapped[StatusReserva] = mapped_column(
         Enum(StatusReserva, name="status_reserva_enum"), 
         default=StatusReserva.AGUARDANDO_FILA, 
@@ -167,10 +180,14 @@ class ConviteMorador(Base):
 
     criado_por: Mapped["Usuario"] = relationship(back_populates="convites_enviados")
 
-class StatusReserva(str, enum.Enum):
-    AGUARDANDO_FILA = "AGUARDANDO_FILA"           
-    AGENDADO = "AGENDADO"                         
-    PENDENTE_CONFIRMACAO = "PENDENTE_CONFIRMACAO" 
-    CONFIRMADO = "CONFIRMADO"                     
-    EXPIRADO = "EXPIRADO"                         
-    LIVRE_DEMANDA = "LIVRE_DEMANDA"               
+
+class Convidado(Base):
+    __tablename__ = "CONVIDADO"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    reserva_id: Mapped[int] = mapped_column(ForeignKey("RESERVA_LOCAL.id"), nullable=False)
+    nome: Mapped[str] = mapped_column(String(120), nullable=False)
+    cpf: Mapped[str] = mapped_column(String(11), nullable=False)
+    data_criacao: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    reserva: Mapped["ReservaLocal"] = relationship(back_populates="convidados")

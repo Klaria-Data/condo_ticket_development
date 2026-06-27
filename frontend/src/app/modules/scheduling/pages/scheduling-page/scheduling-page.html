@@ -9,19 +9,71 @@
       </div>
       <div class="summary">
         <span>{{ places.length }} locais</span>
-        <span>{{ reservations.length }} reservas</span>
+        <span>{{ reservations.length }} reservas ativas</span>
       </div>
     </section>
 
     <p *ngIf="errorMessage" class="alert error">{{ errorMessage }}</p>
     <p *ngIf="successMessage" class="alert success">{{ successMessage }}</p>
 
+    <!-- Painel de Monitoramento Dinamico: Minhas Reservas -->
+    <section class="my-panel">
+      <div class="panel-header">
+        <div>
+          <h3>Minhas reservas</h3>
+          <p>Posicao na fila, status e prazo de confirmacao</p>
+        </div>
+        <lucide-icon [img]="ListOrdered" [size]="22" [strokeWidth]="1.8" />
+      </div>
+
+      <div *ngIf="!myReservations.length" class="empty">Voce ainda nao possui reservas.</div>
+
+      <div class="my-grid">
+        <article *ngFor="let r of myReservations" class="my-card" [class.action]="canConfirm(r.status)">
+          <div class="my-card-top">
+            <div>
+              <h4>{{ r.local_nome }}</h4>
+              <p>{{ formatDateTime(r.inicio) }}</p>
+            </div>
+            <span class="badge" [ngClass]="statusClass(r.status)">{{ statusLabel(r.status) }}</span>
+          </div>
+
+          <div class="my-meta">
+            <span *ngIf="r.status === 'AGUARDANDO_FILA' && r.posicao_fila" class="chip">
+              <lucide-icon [img]="ListOrdered" [size]="14" [strokeWidth]="2" />
+              Posicao na fila: {{ r.posicao_fila }}
+            </span>
+            <span *ngIf="r.total_convidados" class="chip">
+              <lucide-icon [img]="Users" [size]="14" [strokeWidth]="2" />
+              {{ r.total_convidados }} convidado(s)
+            </span>
+          </div>
+
+          <div *ngIf="r.status === 'PENDENTE_CONFIRMACAO' && r.prazo_confirmacao" class="countdown">
+            <lucide-icon [img]="Timer" [size]="15" [strokeWidth]="2" />
+            <span>Confirme em <strong>{{ countdown(r.prazo_confirmacao) }}</strong></span>
+          </div>
+
+          <div class="my-actions" *ngIf="canConfirm(r.status) || canCancel(r.status)">
+            <button *ngIf="canConfirm(r.status)" type="button" class="btn confirm" (click)="confirmReservation(r.id)">
+              <lucide-icon [img]="Check" [size]="15" [strokeWidth]="2.2" />
+              Confirmar
+            </button>
+            <button *ngIf="canCancel(r.status)" type="button" class="btn ghost" (click)="cancelReservation(r.id)">
+              <lucide-icon [img]="X" [size]="15" [strokeWidth]="2.2" />
+              Cancelar
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
+
     <section class="layout">
       <div class="schedule-panel">
         <div class="panel-header">
           <div>
             <h3>Agenda</h3>
-            <p>Reservas confirmadas</p>
+            <p>Reservas ativas dos moradores</p>
           </div>
           <lucide-icon [img]="CalendarDays" [size]="24" [strokeWidth]="1.8" />
         </div>
@@ -29,7 +81,7 @@
         <div *ngIf="isLoading" class="empty">Carregando agendamentos...</div>
 
         <div *ngIf="!isLoading && !upcomingReservations.length" class="empty">
-          Nenhuma reserva cadastrada.
+          Nenhuma reserva ativa.
         </div>
 
         <article *ngFor="let reservation of upcomingReservations" class="reservation-card">
@@ -50,8 +102,25 @@
             <div class="resident">
               <span>{{ reservation.usuario_nome }}</span>
               <strong>Apto {{ reservation.unidade }}</strong>
+              <span class="badge sm" [ngClass]="statusClass(reservation.status)">
+                {{ statusLabel(reservation.status) }}
+              </span>
             </div>
             <p *ngIf="reservation.observacao" class="note">{{ reservation.observacao }}</p>
+
+            <ul *ngIf="isOwner(reservation) && reservation.convidados.length" class="guest-list">
+              <li *ngFor="let g of reservation.convidados">{{ g.nome }} — {{ g.cpf }}</li>
+            </ul>
+
+            <button
+              *ngIf="isAdmin"
+              type="button"
+              class="btn danger sm-btn"
+              (click)="cancelReservation(reservation.id, true)"
+            >
+              <lucide-icon [img]="Ban" [size]="14" [strokeWidth]="2.2" />
+              Hard Cancel
+            </button>
           </div>
         </article>
       </div>
@@ -61,7 +130,7 @@
           <div class="panel-header compact">
             <div>
               <h3>Nova reserva</h3>
-              <p>Confirmacao automatica</p>
+              <p>Reserve uma area comum</p>
             </div>
             <lucide-icon [img]="MapPin" [size]="22" [strokeWidth]="1.8" />
           </div>
@@ -92,8 +161,52 @@
 
           <label>
             Observacao
-            <textarea rows="3" formControlName="observacao"></textarea>
+            <textarea rows="2" formControlName="observacao"></textarea>
           </label>
+
+          <!-- Cadastro documental de convidados -->
+          <div class="guests-header">
+            <span>Convidados</span>
+            <button type="button" class="link-button" (click)="addGuest()">
+              <lucide-icon [img]="Plus" [size]="14" [strokeWidth]="2.2" />
+              Adicionar
+            </button>
+          </div>
+
+          <div class="guest-rows" formArrayName="convidados">
+            <div *ngFor="let guest of convidados.controls; let i = index" class="guest-row" [formGroupName]="i">
+              <div class="guest-photo">
+                <img *ngIf="guestPhotos[i]" [src]="guestPhotos[i] || ''" alt="Foto do convidado" />
+                <label class="photo-pick" *ngIf="!guestPhotos[i]">
+                  <lucide-icon [img]="Camera" [size]="16" [strokeWidth]="2" />
+                  <input type="file" accept="image/*" (change)="onGuestPhoto($event, i)" hidden />
+                </label>
+                <label class="photo-pick small" *ngIf="guestPhotos[i]">
+                  <lucide-icon [img]="Camera" [size]="13" [strokeWidth]="2" />
+                  <input type="file" accept="image/*" (change)="onGuestPhoto($event, i)" hidden />
+                </label>
+              </div>
+              <div class="guest-fields">
+                <input type="text" formControlName="nome" placeholder="Nome do convidado" />
+                <input
+                  type="text"
+                  formControlName="cpf"
+                  placeholder="CPF (000.000.000-00)"
+                  inputmode="numeric"
+                  (input)="maskCpf(i)"
+                />
+                <small
+                  class="field-error"
+                  *ngIf="guest.get('cpf')?.touched && guest.get('cpf')?.errors?.['cpf']"
+                >
+                  CPF invalido.
+                </small>
+              </div>
+              <button type="button" class="icon-button" (click)="removeGuest(i)" aria-label="Remover convidado">
+                <lucide-icon [img]="Trash2" [size]="16" [strokeWidth]="2" />
+              </button>
+            </div>
+          </div>
 
           <button type="submit" class="primary-button" [disabled]="!places.length">
             <lucide-icon [img]="Plus" [size]="17" [strokeWidth]="2" />

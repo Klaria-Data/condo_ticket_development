@@ -267,7 +267,8 @@ def test_sindico_cria_local_agendavel_e_morador_nao_pode_criar(client):
     assert forbidden.status_code == 403
 
 
-def test_criar_agendamento_bloqueia_conflito_de_horario(client):
+def test_criar_agendamento_concorrente_entra_na_fila(client):
+    # Requisito: o sistema NAO bloqueia reservas concorrentes, ele as enfileira.
     admin_email = "sindico-agendamento@teste.com"
     morador1_email = "morador301@teste.com"
     morador2_email = "morador302@teste.com"
@@ -295,8 +296,10 @@ def test_criar_agendamento_bloqueia_conflito_de_horario(client):
     assert reserva.status_code == 201, reserva.text
     assert reserva.json()["local_nome"] == "Piscina"
     assert reserva.json()["unidade"] == "101"
+    # Primeiro a reservar (>48h) vira o detentor do slot.
+    assert reserva.json()["status"] == "AGENDADO"
 
-    conflito = client.post(
+    concorrente = client.post(
         "/agendamentos",
         json={
             "local_id": local["id"],
@@ -305,12 +308,22 @@ def test_criar_agendamento_bloqueia_conflito_de_horario(client):
         },
         headers={"Authorization": f"Bearer {morador2_token}"},
     )
-    assert conflito.status_code == 409
-    assert "Horario indisponivel" in conflito.json().get("detail", "")
+    # Nao bloqueia: a reserva concorrente entra na fila.
+    assert concorrente.status_code == 201, concorrente.text
+    assert concorrente.json()["status"] == "AGUARDANDO_FILA"
 
+    # A agenda compartilhada mostra apenas o detentor ativo (nao quem esta na fila).
     listagem = client.get("/agendamentos", headers={"Authorization": f"Bearer {morador2_token}"})
     assert listagem.status_code == 200
     assert len(listagem.json()) == 1
+
+    # O morador 2 ve sua reserva na fila e sua posicao no dashboard "Minhas Reservas".
+    minhas = client.get("/agendamentos/me", headers={"Authorization": f"Bearer {morador2_token}"})
+    assert minhas.status_code == 200
+    fila = minhas.json()
+    assert len(fila) == 1
+    assert fila[0]["status"] == "AGUARDANDO_FILA"
+    assert fila[0]["posicao_fila"] == 1
 
 
 def test_sindico_cria_convite_e_morador_aceita_com_senha(client):

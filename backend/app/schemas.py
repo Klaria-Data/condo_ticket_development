@@ -1,10 +1,34 @@
 """Pydantic schemas used for request/response validation."""
 
+import re
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from .models import PerfilUsuario, StatusReserva, StatusTicket
+
+
+def validar_cpf(valor: str) -> str:
+    """Valida o formato e os digitos verificadores de um CPF.
+
+    Aceita CPF com ou sem mascara (ex.: ``123.456.789-09`` ou ``12345678909``)
+    e retorna sempre os 11 digitos sem formatacao.
+    """
+    digitos = re.sub(r"\D", "", valor or "")
+
+    if len(digitos) != 11:
+        raise ValueError("CPF deve conter 11 digitos")
+    if digitos == digitos[0] * 11:
+        raise ValueError("CPF invalido")
+
+    for tamanho in (9, 10):
+        soma = sum(int(digitos[i]) * (tamanho + 1 - i) for i in range(tamanho))
+        resto = (soma * 10) % 11
+        digito = 0 if resto == 10 else resto
+        if digito != int(digitos[tamanho]):
+            raise ValueError("CPF invalido")
+
+    return digitos
 
 
 class UsuarioRegistro(BaseModel):
@@ -137,11 +161,31 @@ class LocalAgendavelResposta(BaseModel):
     data_criacao: datetime
 
 
+class ConvidadoCriacao(BaseModel):
+    nome: str = Field(min_length=2, max_length=120)
+    cpf: str = Field(min_length=11, max_length=14)
+
+    @field_validator("cpf")
+    @classmethod
+    def normalizar_cpf(cls, valor: str) -> str:
+        return validar_cpf(valor)
+
+
+class ConvidadoResposta(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    reserva_id: int
+    nome: str
+    cpf: str
+
+
 class ReservaLocalCriacao(BaseModel):
     local_id: int
     inicio: datetime
     fim: datetime
     observacao: str | None = Field(default=None, max_length=500)
+    convidados: list[ConvidadoCriacao] = Field(default_factory=list, max_length=50)
 
     @field_validator("fim")
     @classmethod
@@ -150,6 +194,16 @@ class ReservaLocalCriacao(BaseModel):
         if inicio and fim <= inicio:
             raise ValueError("Horario final deve ser posterior ao horario inicial")
         return fim
+
+
+class ReservaLocalAtualizacao(BaseModel):
+    """Campos editaveis de uma reserva ainda nao confirmada (parte do CRUD)."""
+
+    local_id: int | None = None
+    inicio: datetime | None = None
+    fim: datetime | None = None
+    observacao: str | None = Field(default=None, max_length=500)
+    convidados: list[ConvidadoCriacao] | None = Field(default=None, max_length=50)
 
 
 class ReservaLocalResposta(BaseModel):
@@ -166,9 +220,10 @@ class ReservaLocalResposta(BaseModel):
 
     status: StatusReserva
     prazo_confirmacao: datetime | None
+    convidados: list[ConvidadoResposta] = Field(default_factory=list)
 
     @classmethod
-    def from_orm_with_relations(cls, reserva):
+    def from_orm_with_relations(cls, reserva, incluir_convidados: bool = True):
         return cls(
             id=reserva.id,
             local_id=reserva.local_id,
@@ -182,6 +237,11 @@ class ReservaLocalResposta(BaseModel):
             data_criacao=reserva.data_criacao,
             status=reserva.status,
             prazo_confirmacao=reserva.prazo_confirmacao,
+            convidados=(
+                [ConvidadoResposta.model_validate(c) for c in reserva.convidados]
+                if incluir_convidados
+                else []
+            ),
         )
 
 class ReservaDashboardResposta(BaseModel):
@@ -195,3 +255,4 @@ class ReservaDashboardResposta(BaseModel):
     status: StatusReserva
     prazo_confirmacao: datetime | None
     posicao_fila: int | None = None
+    total_convidados: int = 0
