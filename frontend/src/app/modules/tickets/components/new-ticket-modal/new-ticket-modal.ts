@@ -1,18 +1,22 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { LucideAngularModule, ImagePlus, X } from 'lucide-angular';
 import { Ticket } from '../../../../core/models/ticket.model';
 
 @Component({
   selector: 'app-new-ticket-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, LucideAngularModule],
   templateUrl: './new-ticket-modal.html',
   styleUrls: ['./new-ticket-modal.css']
 })
 export class NewTicketModalComponent {
   @Output() close = new EventEmitter<void>();
   @Output() create = new EventEmitter<Ticket>();
+
+  readonly ImagePlus = ImagePlus;
+  readonly X = X;
 
   title = '';
   description = '';

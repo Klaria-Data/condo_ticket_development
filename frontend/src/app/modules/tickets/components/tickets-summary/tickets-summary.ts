@@ -1,17 +1,22 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
+import { LucideAngularModule, FileText, AlertCircle, Clock, CheckCircle2 } from 'lucide-angular';
 import { Ticket } from '../../../../core/models/ticket.model';
-import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-tickets-summary',
   standalone: true,
-  imports: [CommonModule,MatIconModule],
+  imports: [CommonModule, LucideAngularModule],
   templateUrl: './tickets-summary.html',
   styleUrls: ['./tickets-summary.css']
 })
 export class TicketsSummaryComponent {
   @Input() tickets: Ticket[] = [];
+
+  readonly FileText = FileText;
+  readonly AlertCircle = AlertCircle;
+  readonly Clock = Clock;
+  readonly CheckCircle2 = CheckCircle2;
 
   private readonly now = new Date();
 

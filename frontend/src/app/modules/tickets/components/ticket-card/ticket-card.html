@@ -37,13 +37,30 @@
         </div>
 
         <span>{{ ticket.residentName }}</span>
-        <span class="chip">🏠 {{ ticket.apartment }}</span>
-        <span class="chip">🕒 {{ ticket.createdAt }}</span>
+        <span class="chip">
+          <lucide-icon [img]="Home" [size]="14" [strokeWidth]="1.8" color="#64748b" />
+          {{ ticket.apartment }}
+        </span>
+        <span class="chip">
+          <lucide-icon [img]="Clock" [size]="14" [strokeWidth]="1.8" color="#64748b" />
+          {{ ticket.createdAt }}
+        </span>
 
         <span *ngIf="viewMode === 'SINDICO' && ticket.updatedAt" class="updated">
-          ✔ Atualizado {{ ticket.updatedAt }}
+          <lucide-icon [img]="CheckCircle2" [size]="14" [strokeWidth]="2" color="#059669" />
+          Atualizado {{ ticket.updatedAt }}
         </span>
       </div>
+
+      <button class="comments-toggle-button" (click)="toggleComments()">
+        <lucide-icon [img]="showComments ? ChevronDown : ChevronRight" [size]="15" [strokeWidth]="2" color="#fff" />
+        {{ showComments ? 'Ocultar Comentários' : 'Ver Comentários' }}
+      </button>
     </div>
+  </div>
+
+  <!-- Seção de comentários (expandível) -->
+  <div *ngIf="showComments" class="comments-section">
+    <app-ticket-comments [ticketId]="ticket.id"></app-ticket-comments>
   </div>
 </article>

@@ -11,6 +11,14 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TicketsSummaryComponent } from '../../components/tickets-summary/tickets-summary';
 
+/**
+ * Página principal do sistema de tickets.
+ *
+ * Orquestra a listagem, criação e atualização de status dos chamados.
+ * O viewMode (MORADOR ou SINDICO) é determinado pelo perfil do usuário logado:
+ *   - ADMIN → visão SINDICO (vê todos os tickets, pode mudar status)
+ *   - MORADOR → visão MORADOR (vê apenas seus próprios tickets)
+ */
 @Component({
   selector: 'app-tickets-page',
   standalone: true,
@@ -21,10 +29,10 @@ import { TicketsSummaryComponent } from '../../components/tickets-summary/ticket
     PageHeaderComponent,
     NewTicketModalComponent,
     CommonModule,
-    TicketsSummaryComponent
+    TicketsSummaryComponent,
   ],
   templateUrl: './tickets-page.html',
-  styleUrls: ['./tickets-page.css']
+  styleUrls: ['./tickets-page.css'],
 })
 export class TicketsPageComponent implements OnInit {
   viewMode: ViewMode = 'MORADOR';
@@ -72,6 +80,7 @@ export class TicketsPageComponent implements OnInit {
     this.isNewTicketModalOpen = false;
   }
 
+  /** Cria um novo ticket a partir dos dados informados no modal. */
   createTicket(ticket: Ticket): void {
     const user = this.authService.getCurrentUser();
     if (!user) {
@@ -80,15 +89,11 @@ export class TicketsPageComponent implements OnInit {
     }
 
     this.ticketsService
-      .createTicket(
-        {
-          titulo: ticket.title,
-          descricao: ticket.description,
-          imagem_url: null,
-        },
-        user.nome,
-        user.unidade,
-      )
+      .createTicket({
+        titulo: ticket.title,
+        descricao: ticket.description,
+        imagem_url: null,
+      })
       .subscribe({
         next: () => {
           this.errorMessage = '';
@@ -100,49 +105,40 @@ export class TicketsPageComponent implements OnInit {
             this.authService.logout();
             return;
           }
-
           this.errorMessage = 'Falha ao criar chamado no backend.';
           this.cdr.detectChanges();
         },
       });
   }
 
+  /** Atualiza o status de um ticket seguindo o fluxo ABERTO → EM_ANDAMENTO → RESOLVIDO. */
   updateTicketStatus(event: { ticketId: number; status: TicketStatus }): void {
-    console.log('[TicketsPage] updateTicketStatus called:', event);
-    
     const user = this.authService.getCurrentUser();
     if (!user) {
-      console.log('[TicketsPage] No user found, logging out');
       this.authService.logout();
       return;
     }
 
-    console.log('[TicketsPage] Calling ticketsService.updateTicketStatus');
-    this.ticketsService
-      .updateTicketStatus(event.ticketId, event.status, user.nome, user.unidade)
-      .subscribe({
-        next: () => {
-          console.log('[TicketsPage] Status update successful');
-          this.errorMessage = '';
-          this.loadTickets();
-          this.cdr.detectChanges();
-        },
-        error: (err: HttpErrorResponse) => {
-          console.error('[TicketsPage] Status update error:', err);
-          
-          if (err.status === 401 || err.status === 403) {
-            this.authService.logout();
-            return;
-          }
+    this.ticketsService.updateTicketStatus(event.ticketId, event.status).subscribe({
+      next: () => {
+        this.errorMessage = '';
+        this.loadTickets();
+        this.cdr.detectChanges();
+      },
+      error: (err: HttpErrorResponse) => {
+        if (err.status === 401 || err.status === 403) {
+          this.authService.logout();
+          return;
+        }
 
-          this.errorMessage =
-            err.status === 400
-              ? 'Transicao de status invalida. Siga ABERTO -> EM_ANDAMENTO -> RESOLVIDO.'
-              : 'Falha ao atualizar status do ticket.';
-          this.loadTickets();
-          this.cdr.detectChanges();
-        },
-      });
+        this.errorMessage =
+          err.status === 400
+            ? 'Transicao de status invalida. Siga ABERTO -> EM_ANDAMENTO -> RESOLVIDO.'
+            : 'Falha ao atualizar status do ticket.';
+        this.loadTickets();
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   private loadTickets(): void {
@@ -152,7 +148,7 @@ export class TicketsPageComponent implements OnInit {
       return;
     }
 
-    this.ticketsService.listTickets(user.nome, user.unidade).subscribe({
+    this.ticketsService.listTickets().subscribe({
       next: (tickets) => {
         this.tickets = tickets;
         this.cdr.detectChanges();
@@ -162,7 +158,6 @@ export class TicketsPageComponent implements OnInit {
           this.authService.logout();
           return;
         }
-
         this.errorMessage = 'Falha ao carregar chamados do backend.';
         this.cdr.detectChanges();
       },

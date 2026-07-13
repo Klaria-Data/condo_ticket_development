@@ -1,0 +1,23 @@
+<section class="filters-wrapper">
+  <div class="search-box">
+    <span class="search-icon">⌕</span>
+    <input
+      type="text"
+      [ngModel]="search"
+      (ngModelChange)="onSearchChange($event)"
+      placeholder="Buscar chamados..."
+    />
+  </div>
+
+  <div class="filter-buttons">
+    <button
+      type="button"
+      *ngFor="let filter of filters"
+      class="filter-btn"
+      [class.active]="activeFilter === filter"
+      (click)="selectFilter(filter)"
+    >
+      {{ getFilterLabel(filter) }}
+    </button>
+  </div>
+</section>

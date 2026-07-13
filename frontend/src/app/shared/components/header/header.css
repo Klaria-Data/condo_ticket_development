@@ -13,8 +13,14 @@
   align-items: center;
 }
 
-.icon {
-  font-size: 28px;
+.brand-icon {
+  width: 42px;
+  height: 42px;
+  background: #eef2ff;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 h1 {
@@ -33,6 +39,13 @@ p {
   align-items: center;
 }
 
+.right {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.nav,
 .buttons {
   display: flex;
   background: #eef2f7;
@@ -40,16 +53,49 @@ p {
   padding: 4px;
 }
 
-button {
+button,
+a {
   border: none;
   background: transparent;
-  padding: 10px 16px;
+  padding: 8px 14px;
   border-radius: 8px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #64748b;
+  text-decoration: none;
 }
 
-button.active {
+button.active,
+a.active {
   background: white;
   color: #4f46e5;
   font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+@media (max-width: 900px) {
+  .header,
+  .right,
+  .switch {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .header {
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .right {
+    width: 100%;
+  }
+
+  .nav,
+  .buttons {
+    width: 100%;
+    overflow-x: auto;
+  }
 }

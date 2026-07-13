@@ -1,100 +1,93 @@
 # CondoTicket Frontend
 
-Aplicacao Angular responsavel por login, visualizacao e criacao de chamados.
+Aplicacao Angular responsavel pela experiencia web do CondoTicket.
 
 ## Stack
 
-- Angular 21 (standalone)
+- Angular 21 com standalone components
 - Angular Router
 - HttpClient
-- Interceptor para JWT
+- Interceptors para JWT
+- Lucide Angular para icones
 
 ## Estrutura
 
 ```text
-frontend/
-  src/app/
-    app.routes.ts
-    app.config.ts
-    core/
-      guards/auth.guard.ts
-      interceptors/auth.interceptor.ts
-      services/
-        auth.service.ts
-        tickets.service.ts
-    modules/
-      auth/pages/login-page/
-      tickets/pages/tickets-page/
+frontend/src/app/
+  core/
+    guards/          # authGuard e adminGuard
+    interceptors/    # JWT nas chamadas HTTP
+    models/          # contratos usados pela UI
+    services/        # clientes HTTP
+  modules/
+    auth/            # login
+    tickets/         # chamados
+    scheduling/      # agendamentos de areas compartilhadas
+    residents/       # convites e aceite de moradores
+  shared/
+    components/      # header compartilhado
 ```
 
-## Setup
+## Rotas
 
-```bash
-cd frontend
-npm install
+| Rota | Acesso | Descricao |
+| --- | --- | --- |
+| `/login` | Publico | Login |
+| `/` | Autenticado | Chamados |
+| `/agendamentos` | Autenticado | Reservas de areas compartilhadas |
+| `/moradores` | ADMIN | Cadastro de moradores por convite |
+| `/convite/:token` | Publico | Morador define sua senha |
+
+## Permissoes na UI
+
+- `authGuard` bloqueia rotas autenticadas.
+- `adminGuard` bloqueia rotas exclusivas do sindico.
+- O link `Moradores` aparece apenas para usuario com perfil `ADMIN`.
+- O modo visual `MORADOR`/`SINDICO` nao substitui a permissao real do usuario.
+
+## Integracao com a API
+
+A URL base fica em `src/environments/environment.ts`.
+
+Em desenvolvimento:
+
+```ts
+apiUrl: 'http://127.0.0.1:8000'
 ```
+
+No fluxo de microservicos, `8000` e o nginx/API Gateway, que roteia para `auth`, `tickets` e `comments`.
+
+Servicos HTTP principais:
+
+| Service | Rotas usadas |
+| --- | --- |
+| `AuthService` | `/login` |
+| `TicketsService` | `/tickets` |
+| `CommentsService` | `/tickets/{id}/comentarios` |
+| `SchedulingService` | `/locais-agendaveis`, `/agendamentos` |
+| `ResidentInvitesService` | `/moradores/convites`, `/convites/{token}` |
 
 ## Executar
 
 ```bash
 cd frontend
+npm install
 npm start
 ```
 
-Aplicacao em `http://localhost:4200`.
+Aplicacao: http://localhost:4200
 
-## Rotas
-
-- `/login`: pagina publica de login
-- `/`: pagina de tickets protegida por `authGuard`
-
-Se nao autenticado, usuario e redirecionado para `/login`.
-
-## Fluxo de autenticacao
-
-1. Login envia credenciais para `POST /login`.
-2. `AuthService` salva token e usuario no `localStorage`.
-3. `auth.interceptor` injeta `Authorization: Bearer <token>` nas chamadas.
-4. `auth.guard` protege a rota principal.
-5. Respostas `401/403` levam a logout e redirecionamento.
-
-Chaves no localStorage:
-
-- `condoticket.jwt`
-- `condoticket.user`
-
-## Integracao com backend
-
-`TicketsService` consome:
-
-- `GET /tickets`
-- `POST /tickets`
-
-URL base atual no codigo:
-
-- `http://127.0.0.1:8000`
-
-## Modo de visualizacao
-
-- `MORADOR`
-- `SINDICO`
-
-O modo inicial pode ser derivado do perfil retornado no login (`ADMIN` -> `SINDICO`).
-
-## Build e testes
+## Build
 
 ```bash
 cd frontend
 npm run build
-npm test
 ```
 
-## Problemas comuns
+## Observacoes
 
-Erro de CORS no login:
-
-- Garanta que o backend esteja com `CORS_ALLOW_ORIGINS` incluindo `http://localhost:4200`.
-
-Erro 401/403 nas requisicoes:
-
-- Token expirado/invalido remove sessao e redireciona para login.
+- O frontend espera que a API Gateway esteja em `http://127.0.0.1:8000`.
+- Para testar convites sem SMTP, use o link retornado pela API ao criar o convite.
+- Chaves usadas no `localStorage`:
+  - `condoticket.jwt`
+  - `condoticket.user`

@@ -1,0 +1,82 @@
+<app-header [viewMode]="viewMode" (viewModeChange)="onViewModeChange($event)"></app-header>
+
+<div class="page">
+  <main class="content">
+    <section class="title-row">
+      <div>
+        <p class="eyebrow">Moradores</p>
+        <h2>Cadastro por convite</h2>
+      </div>
+      <div class="summary">
+        <lucide-icon [img]="UsersRound" [size]="18" [strokeWidth]="2" />
+        {{ invites.length }} convites
+      </div>
+    </section>
+
+    <p *ngIf="errorMessage" class="alert error">{{ errorMessage }}</p>
+    <p *ngIf="successMessage" class="alert success">{{ successMessage }}</p>
+
+    <section class="layout">
+      <form class="form-panel" [formGroup]="inviteForm" (ngSubmit)="createInvite()">
+        <div class="panel-header">
+          <div>
+            <h3>Novo morador</h3>
+            <p>O convite permite escolher a senha</p>
+          </div>
+          <lucide-icon [img]="UserPlus" [size]="24" [strokeWidth]="1.8" />
+        </div>
+
+        <label>
+          Nome
+          <input type="text" formControlName="nome" />
+        </label>
+
+        <label>
+          Email
+          <input type="email" formControlName="email" />
+        </label>
+
+        <label>
+          Unidade
+          <input type="text" formControlName="unidade" />
+        </label>
+
+        <button type="submit">
+          <lucide-icon [img]="Send" [size]="17" [strokeWidth]="2" />
+          Enviar convite
+        </button>
+
+        <div *ngIf="latestInviteUrl" class="invite-link">
+          <span>{{ latestInviteUrl }}</span>
+          <button type="button" class="icon-button" (click)="copyLatestInvite()" title="Copiar link">
+            <lucide-icon [img]="Copy" [size]="17" [strokeWidth]="2" />
+          </button>
+        </div>
+      </form>
+
+      <section class="list-panel">
+        <div class="panel-header">
+          <div>
+            <h3>Convites enviados</h3>
+            <p>Status dos acessos pendentes</p>
+          </div>
+          <lucide-icon [img]="MailPlus" [size]="24" [strokeWidth]="1.8" />
+        </div>
+
+        <div *ngIf="isLoading" class="empty">Carregando convites...</div>
+        <div *ngIf="!isLoading && !invites.length" class="empty">Nenhum convite enviado.</div>
+
+        <article *ngFor="let invite of invites" class="invite-card">
+          <div>
+            <h4>{{ invite.nome }}</h4>
+            <p>{{ invite.email }} · Apto {{ invite.unidade }}</p>
+          </div>
+          <span [class.used]="invite.usado">
+            {{ invite.usado ? 'Aceito' : 'Pendente' }}
+          </span>
+          <small>Expira em {{ formatDate(invite.data_expiracao) }}</small>
+        </article>
+      </section>
+    </section>
+  </main>
+</div>

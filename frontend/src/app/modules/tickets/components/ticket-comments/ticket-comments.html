@@ -1,0 +1,74 @@
+<div class="comments-container">
+  <h3>Comentários do Ticket</h3>
+
+  <!-- Lista de comentários -->
+  <div class="comments-list">
+    <div *ngIf="loading" class="loading">
+      Carregando comentários...
+    </div>
+
+    <div *ngIf="!loading && comments.length === 0" class="no-comments">
+      Nenhum comentário ainda. Seja o primeiro a comentar!
+    </div>
+
+    <div *ngFor="let comment of comments" class="comment">
+      <div class="comment-header">
+        <div class="comment-avatar">{{ getInitials(comment.usuario_nome) }}</div>
+        <div class="comment-info">
+          <strong>{{ comment.usuario_nome || 'Anônimo' }}</strong>
+          <span class="comment-date">{{ comment.data_envio | date: 'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+      </div>
+
+      <!-- Modo de visualização -->
+      <div *ngIf="editingCommentId !== comment.id" class="comment-body">
+        {{ comment.mensagem }}
+      </div>
+
+      <!-- Modo de edição inline -->
+      <div *ngIf="editingCommentId === comment.id" class="comment-edit">
+        <textarea
+          [(ngModel)]="editingMessage"
+          class="comment-textarea"
+          rows="3"
+          maxlength="2000"
+        ></textarea>
+        <div class="comment-edit-actions">
+          <button (click)="saveEdit(comment)" class="btn-save">Salvar</button>
+          <button (click)="cancelEdit()" class="btn-cancel">Cancelar</button>
+        </div>
+      </div>
+
+      <!-- Ações (visíveis apenas para o autor do comentário) -->
+      <div *ngIf="editingCommentId !== comment.id && isOwnComment(comment)" class="comment-actions">
+        <button (click)="startEdit(comment)" class="btn-link">Editar</button>
+        <button (click)="deleteComment(comment.id)" class="btn-link btn-danger">Excluir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mensagem de erro global -->
+  <div *ngIf="errorMessage" class="error-message">
+    {{ errorMessage }}
+  </div>
+
+  <!-- Formulário para novo comentário -->
+  <div *ngIf="isAuthenticated" class="comment-form">
+    <form [formGroup]="commentForm" (ngSubmit)="onSubmit()">
+      <textarea
+        formControlName="mensagem"
+        placeholder="Escreva um comentário sobre este ticket..."
+        rows="3"
+        class="comment-textarea"
+      ></textarea>
+
+      <button
+        type="submit"
+        [disabled]="!commentForm.valid"
+        class="submit-button"
+      >
+        Enviar Comentário
+      </button>
+    </form>
+  </div>
+</div>
