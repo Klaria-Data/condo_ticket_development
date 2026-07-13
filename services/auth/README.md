@@ -1,33 +1,72 @@
 # Auth Service
 
-Responsável pelo registro de usuários e emissão de tokens JWT.
+Microsservico responsavel por autenticacao, registro direto e convites de moradores.
+
+Porta interna: `8001`.
+
+## Responsabilidades
+
+- Registrar usuarios via `/registro`.
+- Autenticar usuarios via `/login`.
+- Gerar convites para moradores.
+- Permitir que o morador aceite o convite e defina a propria senha.
+- Criar as tabelas do banco ao iniciar (`Base.metadata.create_all`).
 
 ## Endpoints
 
-| Método | Rota       | Autenticação | Descrição                        |
-|--------|------------|:------------:|----------------------------------|
-| POST   | /registro  | Não          | Registra novo usuário            |
-| POST   | /login     | Não          | Autentica e retorna token JWT    |
+| Metodo | Rota | Auth | Perfil | Descricao |
+| --- | --- | --- | --- | --- |
+| POST | `/registro` | Nao | - | Registra usuario diretamente |
+| POST | `/login` | Nao | - | Retorna JWT |
+| POST | `/moradores/convites` | Sim | ADMIN | Cria convite para morador |
+| GET | `/moradores/convites` | Sim | ADMIN | Lista convites enviados |
+| GET | `/convites/{token}` | Nao | - | Consulta dados publicos do convite |
+| POST | `/convites/{token}/aceitar` | Nao | - | Cria morador com senha escolhida |
 
-## Variáveis de Ambiente
+## Variaveis de Ambiente
 
-| Variável            | Padrão                                          | Descrição                          |
-|---------------------|-------------------------------------------------|------------------------------------|
-| `DATABASE_URL`      | `mysql+pymysql://root:root@localhost:3306/condoticket` | URL de conexão MySQL        |
-| `JWT_SECRET_KEY`    | `change-me-in-production`                       | Chave de assinatura JWT (**troque em prod!**) |
-| `JWT_EXPIRE_MINUTES`| `60`                                            | Duração do token em minutos        |
-| `CORS_ALLOW_ORIGINS`| `http://localhost:4200,http://127.0.0.1:4200`   | Origins permitidas para CORS       |
+| Variavel | Padrao | Descricao |
+| --- | --- | --- |
+| `DATABASE_URL` | `mysql+pymysql://root:root@localhost:3306/condoticket` | URL do MySQL |
+| `JWT_SECRET_KEY` | `change-me-in-production` | Chave de assinatura JWT |
+| `JWT_EXPIRE_MINUTES` | `60` | Duracao do token |
+| `CORS_ALLOW_ORIGINS` | `http://localhost:4200,http://127.0.0.1:4200` | Origins permitidas |
+| `FRONTEND_BASE_URL` | `http://127.0.0.1:4200` | Base para montar link de convite |
+| `INVITE_EXPIRE_DAYS` | `7` | Validade do convite |
+| `SMTP_HOST` | vazio | Host SMTP para envio real de email |
+| `SMTP_PORT` | `587` | Porta SMTP |
+| `SMTP_USER` | vazio | Usuario SMTP |
+| `SMTP_PASSWORD` | vazio | Senha SMTP |
+| `SMTP_FROM` | usuario SMTP ou fallback | Remetente do email |
+| `SEED_ADMIN_NAME` | vazio | Nome do sindico inicial |
+| `SEED_ADMIN_EMAIL` | vazio | Email do sindico inicial |
+| `SEED_ADMIN_PASSWORD` | vazio | Senha do sindico inicial |
+| `SEED_ADMIN_UNIDADE` | `000` | Unidade do sindico inicial |
 
-## Rodando Localmente (sem Docker)
+Sem `SMTP_HOST`, o convite nao e enviado por email real. O link e retornado na resposta e registrado em log para desenvolvimento.
+
+Quando `SEED_ADMIN_EMAIL` e `SEED_ADMIN_PASSWORD` estao configurados, o servico cria esse usuario `ADMIN` na inicializacao se ele ainda nao existir. O `docker-compose.yml` ja define um admin local:
+
+```text
+Email: sindico@teste.com
+Senha: senha123456
+```
+
+## Rodar Localmente
 
 A partir da raiz do monorepo:
 
 ```bash
-PYTHONPATH=. uvicorn services.auth.app.main:app --port 8001 --reload
+PYTHONPATH=. uvicorn services.auth.app.main:app --host 127.0.0.1 --port 8001 --reload
 ```
 
-## Notas de Arquitetura
+## Exemplo de Convite
 
-- Este é o **único** serviço que chama `Base.metadata.create_all` — ele cria todas as tabelas no banco ao subir.
-- O token JWT gerado aqui é validado pelos demais serviços via `services/shared/auth_utils.py`.
-- A mesma `JWT_SECRET_KEY` deve ser configurada em todos os serviços.
+```bash
+curl -X POST http://localhost:8000/moradores/convites \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"nome":"Maria Silva","email":"maria@teste.com","unidade":"302"}'
+```
+
+Resposta inclui `convite_url` quando o convite e criado.

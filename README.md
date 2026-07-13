@@ -1,153 +1,99 @@
 # CondoTicket
 
-Sistema de gestão de condomínios com abertura, acompanhamento e chat de chamados de suporte.
+Sistema de gestao de condominio em monorepo, com frontend Angular e backend em microservicos FastAPI.
 
-Monorepo com arquitetura de microsserviços:
-- `services/auth/` — autenticação e emissão de tokens JWT
-- `services/tickets/` — gestão de tickets de suporte
-- `services/comments/` — chat/comentários dos tickets
-- `services/shared/` — modelos e utilitários compartilhados
-- `frontend/` — SPA Angular 21
-- `nginx/` — API Gateway (roteamento entre microsserviços)
+O projeto permite:
+- abrir e acompanhar chamados de manutencao;
+- comentar chamados em formato de conversa;
+- reservar areas compartilhadas, como piscina e academia;
+- convidar moradores por email para criarem a propria senha;
+- separar permissoes entre sindico (`ADMIN`) e morador (`MORADOR`).
 
----
+## Arquitetura Oficial
 
-## Arquitetura
+A arquitetura principal do projeto e a de microservicos em `services/`.
 
-```
-Browser (Angular :4200)
-        │
-        │  http://localhost:8000
-        ▼
-┌─────────────────────────────────────────────────────────┐
-│                  nginx  (API Gateway)                   │
-│                      porta 8000                         │
-└──────────┬────────────────┬────────────────┬────────────┘
-           │                │                │
-    /registro, /login   /tickets/**    /tickets/*/comentarios
-           │                │                │
-    ┌──────▼──────┐  ┌──────▼──────┐  ┌──────▼──────┐
-    │  auth       │  │  tickets    │  │  comments   │
-    │  :8001      │  │  :8002      │  │  :8003      │
-    └──────┬──────┘  └──────┬──────┘  └──────┬──────┘
-           │                │                │
-           └────────────────┴────────────────┘
-                            │
-                     MySQL :3306
+```text
+frontend/ Angular (:4200)
+        |
+        | HTTP http://localhost:8000
+        v
+nginx/ API Gateway (:8000)
+        |
+        |-- services/auth     (:8001) login, registro e convites de moradores
+        |-- services/tickets  (:8002) tickets, status e agendamentos
+        |-- services/comments (:8003) comentarios dos tickets
+        |
+        v
+mysql (:3306)
 ```
 
-O frontend sempre aponta para `http://localhost:8000`. O nginx decide qual microsserviço responde com base na URL.
+O diretorio `backend/` e mantido como backend monolitico de apoio para desenvolvimento local e testes rapidos. Ele nao e o desenho principal de producao do projeto.
 
----
+## Estrutura
 
-## Estrutura do Projeto
-
-```
+```text
 condo_ticket_development/
-├── services/
-│   ├── shared/              # Código compartilhado (ORM, JWT, banco)
-│   │   ├── database.py
-│   │   ├── models.py
-│   │   └── auth_utils.py
-│   ├── auth/                # POST /registro, POST /login
-│   │   ├── app/main.py
-│   │   ├── Dockerfile
-│   │   ├── requirements.txt
-│   │   └── README.md
-│   ├── tickets/             # GET/POST /tickets, PUT /tickets/{id}/status
-│   │   ├── app/main.py
-│   │   ├── Dockerfile
-│   │   └── README.md
-│   └── comments/            # GET/POST/PUT/DELETE /tickets/{id}/comentarios
-│       ├── app/main.py
-│       ├── Dockerfile
-│       └── README.md
-├── nginx/
-│   ├── nginx.conf           # Configuração do API Gateway
-│   └── README.md
-├── frontend/
-│   └── src/
-│       ├── environments/    # URLs de API por ambiente
-│       └── app/
-│           ├── core/        # Services, guards, interceptors, models
-│           └── modules/     # Auth e Tickets (com chat de comentários)
-├── docker-compose.yml       # Orquestra todos os 6 serviços
-├── backend/                 # Código legado (referência histórica)
-└── README.md
+  frontend/                 # SPA Angular
+  nginx/                    # API Gateway dos microservicos
+  services/
+    shared/                 # ORM, banco e utilitarios de autenticacao
+    auth/                   # /registro, /login, /moradores/convites, /convites
+    tickets/                # /tickets, /locais-agendaveis, /agendamentos
+    comments/               # /tickets/{id}/comentarios
+  backend/                  # monolito de apoio/testes locais
+  docker-compose.yml
 ```
-
----
-
-## Tecnologias
-
-| Camada     | Tecnologia                                      |
-|------------|-------------------------------------------------|
-| Frontend   | Angular 21, standalone components, RxJS         |
-| API Gateway| Nginx 1.25                                      |
-| Microsserviços | FastAPI 0.116, Uvicorn                     |
-| ORM        | SQLAlchemy 2.0                                  |
-| Validação  | Pydantic 2.11                                   |
-| Auth       | PyJWT 2.10, Passlib + Bcrypt                    |
-| Banco      | MySQL 8.0, PyMySQL                              |
-| Containers | Docker, Docker Compose                          |
-
----
-
-## Pré-requisitos
-
-Para rodar com Docker (recomendado): **Docker Desktop**
-
-Para rodar localmente sem Docker:
-- Python 3.11+
-- Node.js 20+ e npm
-- MySQL 8.0 em execução
-
----
 
 ## Como Rodar com Docker Compose
+
+Recomendado para validar a arquitetura de microservicos:
 
 ```bash
 docker compose up --build
 ```
 
-Serviços iniciados:
-| Serviço   | URL pública                  |
-|-----------|------------------------------|
-| Frontend  | http://localhost:4200        |
-| API       | http://localhost:8000        |
-| MySQL     | localhost:3306               |
+Servicos publicos:
 
-> **Nota:** O serviço `auth` é o único que cria as tabelas no banco (`create_all`).
-> Os demais serviços aguardam o MySQL ficar saudável antes de iniciar.
+| Servico | URL |
+| --- | --- |
+| Frontend | http://localhost:4200 |
+| API Gateway | http://localhost:8000 |
+| MySQL | interno no Docker como `mysql:3306` |
 
----
+Primeiro acesso local criado automaticamente pelo `auth` quando usar o `docker-compose.yml` padrao:
 
-## Como Rodar Localmente (sem Docker)
+```text
+Email: sindico@teste.com
+Senha: senha123456
+```
 
-### 1. MySQL
+Essas credenciais sao apenas para desenvolvimento local. Em outro ambiente, sobrescreva as variaveis `SEED_ADMIN_*`.
 
-Certifique-se de que o MySQL está rodando com o banco `condoticket` criado:
+## Como Rodar Localmente Sem Docker
+
+Suba o MySQL com o banco `condoticket` criado:
 
 ```sql
 CREATE DATABASE IF NOT EXISTS condoticket;
 ```
 
-### 2. Microsserviços Python
-
-A partir da **raiz do monorepo**, execute cada serviço em um terminal diferente:
+Em terminais separados, a partir da raiz do repositorio:
 
 ```bash
-# Auth Service
-PYTHONPATH=. uvicorn services.auth.app.main:app --port 8001 --reload
+# Auth
+PYTHONPATH=. uvicorn services.auth.app.main:app --host 127.0.0.1 --port 8001 --reload
 
-# Tickets Service
-PYTHONPATH=. uvicorn services.tickets.app.main:app --port 8002 --reload
+# Tickets e agendamentos
+PYTHONPATH=. uvicorn services.tickets.app.main:app --host 127.0.0.1 --port 8002 --reload
 
-# Comments Service
-PYTHONPATH=. uvicorn services.comments.app.main:app --port 8003 --reload
+# Comentarios
+PYTHONPATH=. uvicorn services.comments.app.main:app --host 127.0.0.1 --port 8003 --reload
 ```
 
-### 3. Frontend
+Para usar as mesmas rotas do frontend, rode tambem o nginx ou um proxy equivalente na porta `8000`.
+
+Frontend:
 
 ```bash
 cd frontend
@@ -155,120 +101,115 @@ npm install
 npm start
 ```
 
-> Sem nginx local, aponte o `apiUrl` diretamente para um dos serviços conforme necessidade,
-> ou use um proxy reverso local.
+## Variaveis de Ambiente
 
----
-
-## Variáveis de Ambiente
-
-Crie um arquivo `.env` na raiz (ou exporte individualmente):
+Variaveis compartilhadas pelos servicos:
 
 ```env
-DATABASE_URL=mysql+pymysql://root:root@localhost:3306/condoticket
+DATABASE_URL=mysql+pymysql://root:root@mysql:3306/condoticket
 JWT_SECRET_KEY=troque-esta-chave-em-producao
 JWT_EXPIRE_MINUTES=60
 CORS_ALLOW_ORIGINS=http://localhost:4200,http://127.0.0.1:4200
 MYSQL_ROOT_PASSWORD=root
 ```
 
-> **Importante:** `JWT_SECRET_KEY` deve ser a **mesma** em todos os microsserviços.
+Convites de moradores:
 
----
-
-## Autenticação e Perfis
-
-| Perfil    | Permissões                                                    |
-|-----------|---------------------------------------------------------------|
-| `ADMIN`   | Vê todos os tickets, atualiza status, edita/deleta qualquer comentário |
-| `MORADOR` | Vê apenas seus tickets, cria tickets, comenta e edita/deleta os próprios comentários |
-
-**Fluxo:**
-1. `POST /login` → retorna `access_token` JWT
-2. Frontend salva o token no `localStorage`
-3. `AuthInterceptor` injeta `Authorization: Bearer <token>` em todas as requisições
-4. `401/403` do backend acionam logout automático
-
----
-
-## API — Referência de Endpoints
-
-### Auth Service (`/registro`, `/login`)
-
-| Método | Rota       | Auth | Descrição                         |
-|--------|------------|:----:|------------------------------------|
-| POST   | /registro  | Não  | Registra novo usuário              |
-| POST   | /login     | Não  | Autentica e retorna token JWT      |
-
-### Tickets Service (`/tickets`)
-
-| Método | Rota                    | Auth | Perfil  | Descrição                                    |
-|--------|-------------------------|:----:|:-------:|----------------------------------------------|
-| GET    | /tickets                | Sim  | Qualquer| Lista tickets (ADMIN vê todos)               |
-| POST   | /tickets                | Sim  | Qualquer| Cria ticket com status `ABERTO`              |
-| PUT    | /tickets/{id}/status    | Sim  | ADMIN   | Avança status: ABERTO→EM_ANDAMENTO→RESOLVIDO |
-
-### Comments Service (`/tickets/{id}/comentarios`)
-
-| Método | Rota                                  | Auth | Perfil       | Descrição                    |
-|--------|---------------------------------------|:----:|:------------:|------------------------------|
-| GET    | /tickets/{id}/comentarios             | Sim  | Qualquer     | Lista comentários do ticket  |
-| POST   | /tickets/{id}/comentarios             | Sim  | Qualquer     | Adiciona comentário          |
-| PUT    | /tickets/{id}/comentarios/{cid}       | Sim  | Autor/ADMIN  | Edita mensagem do comentário |
-| DELETE | /tickets/{id}/comentarios/{cid}       | Sim  | Autor/ADMIN  | Remove comentário (204)      |
-
-**Documentação interativa:** cada serviço expõe `/docs` (Swagger UI) na sua porta local.
-
----
-
-## Exemplos de uso com curl
-
-```bash
-# Login
-TOKEN=$(curl -s -X POST http://localhost:8000/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@teste.com","senha":"senha123456"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
-
-# Listar tickets
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/tickets
-
-# Criar comentário
-curl -X POST http://localhost:8000/tickets/1/comentarios \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"mensagem":"Problema identificado, enviando técnico."}'
-
-# Editar comentário
-curl -X PUT http://localhost:8000/tickets/1/comentarios/1 \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"mensagem":"Técnico agendado para amanhã às 10h."}'
-
-# Deletar comentário
-curl -X DELETE http://localhost:8000/tickets/1/comentarios/1 \
-  -H "Authorization: Bearer $TOKEN"
+```env
+FRONTEND_BASE_URL=http://localhost:4200
+INVITE_EXPIRE_DAYS=7
+SMTP_HOST=smtp.exemplo.com
+SMTP_PORT=587
+SMTP_USER=usuario
+SMTP_PASSWORD=senha
+SMTP_FROM=no-reply@condoticket.com
+SEED_ADMIN_NAME=Sindico Teste
+SEED_ADMIN_EMAIL=sindico@teste.com
+SEED_ADMIN_PASSWORD=senha123456
+SEED_ADMIN_UNIDADE=301
 ```
 
----
+Se `SMTP_HOST` nao estiver configurado, o backend nao envia email real. Nesse caso, o link do convite e retornado pela API e registrado nos logs, o que ajuda no desenvolvimento local.
 
-## Troubleshooting
+As variaveis `SEED_ADMIN_*` criam um sindico inicial se o e-mail ainda nao existir. Isso evita que um banco novo fique sem usuario administrador.
 
-**CORS error no browser:**
-Verifique `CORS_ALLOW_ORIGINS` — deve incluir a origem do frontend (`http://localhost:4200`).
+O MySQL nao e publicado no host por padrao para evitar conflito com instalacoes locais na porta `3306`. Para acessar o banco manualmente:
 
-**502 Bad Gateway no nginx:**
-Um dos microsserviços não subiu. Verifique os logs: `docker compose logs auth` / `tickets` / `comments`.
+```bash
+docker compose exec mysql mysql -uroot -proot condoticket
+```
 
-**MySQL não pronto (serviços caem no início):**
-O `healthcheck` do MySQL aguarda até 100 segundos. Se persistir, verifique `MYSQL_ROOT_PASSWORD`.
+## Perfis
 
-**Token inválido / logout automático:**
-O token expirou (padrão: 60 min) ou `JWT_SECRET_KEY` é diferente entre os serviços.
+| Perfil | Permissoes |
+| --- | --- |
+| `ADMIN` | ve todos os chamados, atualiza status, cadastra locais agendaveis, convida moradores |
+| `MORADOR` | cria chamados, ve seus chamados, comenta, reserva locais disponiveis |
 
----
+## Principais Rotas da API
 
-Documentação detalhada de cada serviço:
-- [`services/auth/README.md`](services/auth/README.md)
-- [`services/tickets/README.md`](services/tickets/README.md)
-- [`services/comments/README.md`](services/comments/README.md)
-- [`nginx/README.md`](nginx/README.md)
+### Auth Service
+
+| Metodo | Rota | Auth | Perfil | Descricao |
+| --- | --- | --- | --- | --- |
+| POST | `/registro` | Nao | - | Registra usuario diretamente |
+| POST | `/login` | Nao | - | Autentica e retorna JWT |
+| POST | `/moradores/convites` | Sim | ADMIN | Cria convite para morador |
+| GET | `/moradores/convites` | Sim | ADMIN | Lista convites enviados |
+| GET | `/convites/{token}` | Nao | - | Consulta convite valido |
+| POST | `/convites/{token}/aceitar` | Nao | - | Cria senha e ativa morador |
+
+### Tickets Service
+
+| Metodo | Rota | Auth | Perfil | Descricao |
+| --- | --- | --- | --- | --- |
+| GET | `/tickets` | Sim | Qualquer | Lista chamados visiveis |
+| POST | `/tickets` | Sim | Qualquer | Abre chamado |
+| PUT | `/tickets/{id}/status` | Sim | ADMIN | Avanca status |
+| GET | `/locais-agendaveis` | Sim | Qualquer | Lista locais reservaveis |
+| POST | `/locais-agendaveis` | Sim | ADMIN | Cadastra local reservavel |
+| GET | `/agendamentos` | Sim | Qualquer | Lista reservas |
+| POST | `/agendamentos` | Sim | Qualquer | Reserva local se horario estiver livre |
+
+### Comments Service
+
+| Metodo | Rota | Auth | Perfil | Descricao |
+| --- | --- | --- | --- | --- |
+| GET | `/tickets/{id}/comentarios` | Sim | Qualquer | Lista comentarios |
+| POST | `/tickets/{id}/comentarios` | Sim | Qualquer | Cria comentario |
+| PUT | `/tickets/{id}/comentarios/{cid}` | Sim | Autor/ADMIN | Edita comentario |
+| DELETE | `/tickets/{id}/comentarios/{cid}` | Sim | Autor/ADMIN | Remove comentario |
+
+## Frontend
+
+Rotas principais:
+
+| Rota | Acesso | Descricao |
+| --- | --- | --- |
+| `/login` | Publico | Login |
+| `/` | Autenticado | Chamados |
+| `/agendamentos` | Autenticado | Reservas de areas compartilhadas |
+| `/moradores` | ADMIN | Cadastro de moradores por convite |
+| `/convite/:token` | Publico | Morador define senha pelo convite |
+
+## Testes e Build
+
+Backend monolitico de apoio:
+
+```bash
+python -m pytest backend/tests
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm run build
+```
+
+## Observacoes de Manutencao
+
+- A pasta `services/` deve ser a fonte principal para novas regras de backend.
+- A pasta `backend/` existe para compatibilidade e testes locais; evite adicionar features novas apenas nela.
+- Sempre que criar rota nova, atualize `nginx/nginx.conf` e este README.
+- Sempre que adicionar tela nova, atualize `frontend/README.md`.

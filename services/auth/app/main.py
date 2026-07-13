@@ -26,7 +26,7 @@ from sqlalchemy.orm import Session
 
 from shared.auth_utils import get_current_user
 from shared.auth_utils import create_access_token, hash_password, verify_password
-from shared.database import Base, engine, get_db
+from shared.database import Base, SessionLocal, engine, get_db
 from shared.models import ConviteMorador, PerfilUsuario, Usuario
 
 logging.basicConfig(level=logging.INFO)
@@ -180,6 +180,35 @@ def get_valid_invite(token: str, db: Session) -> ConviteMorador:
     if not convite or convite.usado or convite.data_expiracao < datetime.utcnow():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Convite invalido ou expirado")
     return convite
+
+
+def seed_default_admin() -> None:
+    email = os.getenv("SEED_ADMIN_EMAIL")
+    password = os.getenv("SEED_ADMIN_PASSWORD")
+    if not email or not password:
+        return
+
+    db = SessionLocal()
+    try:
+        existing_user = db.query(Usuario).filter(Usuario.email == email).first()
+        if existing_user:
+            return
+
+        admin = Usuario(
+            nome=os.getenv("SEED_ADMIN_NAME", "Sindico"),
+            email=email,
+            senha_hash=hash_password(password),
+            unidade=os.getenv("SEED_ADMIN_UNIDADE", "000"),
+            perfil=PerfilUsuario.ADMIN,
+        )
+        db.add(admin)
+        db.commit()
+        logger.info("Admin inicial criado: %s", email)
+    finally:
+        db.close()
+
+
+seed_default_admin()
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
