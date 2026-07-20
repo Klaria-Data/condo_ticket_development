@@ -208,7 +208,35 @@ def seed_default_admin() -> None:
         db.close()
 
 
+def seed_default_resident() -> None:
+    """Cria o morador de teste local, sem sobrescrever usuários já existentes."""
+    email = os.getenv("SEED_RESIDENT_EMAIL")
+    password = os.getenv("SEED_RESIDENT_PASSWORD")
+    if not email or not password:
+        return
+
+    db = SessionLocal()
+    try:
+        existing_user = db.query(Usuario).filter(Usuario.email == email).first()
+        if existing_user:
+            return
+
+        resident = Usuario(
+            nome=os.getenv("SEED_RESIDENT_NAME", "Morador"),
+            email=email,
+            senha_hash=hash_password(password),
+            unidade=os.getenv("SEED_RESIDENT_UNIDADE", "000"),
+            perfil=PerfilUsuario.MORADOR,
+        )
+        db.add(resident)
+        db.commit()
+        logger.info("Morador inicial criado: %s", email)
+    finally:
+        db.close()
+
+
 seed_default_admin()
+seed_default_resident()
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────

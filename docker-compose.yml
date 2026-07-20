@@ -46,6 +46,10 @@ services:
       - SEED_ADMIN_EMAIL=${SEED_ADMIN_EMAIL:-sindico@teste.com}
       - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-senha123456}
       - SEED_ADMIN_UNIDADE=${SEED_ADMIN_UNIDADE:-301}
+      - SEED_RESIDENT_NAME=${SEED_RESIDENT_NAME:-Morador Teste}
+      - SEED_RESIDENT_EMAIL=${SEED_RESIDENT_EMAIL:-morador@teste.com}
+      - SEED_RESIDENT_PASSWORD=${SEED_RESIDENT_PASSWORD:-senha123456}
+      - SEED_RESIDENT_UNIDADE=${SEED_RESIDENT_UNIDADE:-101}
     depends_on:
       mysql:
         condition: service_healthy

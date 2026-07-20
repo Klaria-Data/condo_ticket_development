@@ -42,13 +42,22 @@ Porta interna: `8001`.
 | `SEED_ADMIN_EMAIL` | vazio | Email do sindico inicial |
 | `SEED_ADMIN_PASSWORD` | vazio | Senha do sindico inicial |
 | `SEED_ADMIN_UNIDADE` | `000` | Unidade do sindico inicial |
+| `SEED_RESIDENT_NAME` | vazio | Nome do morador inicial |
+| `SEED_RESIDENT_EMAIL` | vazio | E-mail do morador inicial |
+| `SEED_RESIDENT_PASSWORD` | vazio | Senha do morador inicial |
+| `SEED_RESIDENT_UNIDADE` | `000` | Unidade do morador inicial |
 
 Sem `SMTP_HOST`, o convite nao e enviado por email real. O link e retornado na resposta e registrado em log para desenvolvimento.
 
-Quando `SEED_ADMIN_EMAIL` e `SEED_ADMIN_PASSWORD` estao configurados, o servico cria esse usuario `ADMIN` na inicializacao se ele ainda nao existir. O `docker-compose.yml` ja define um admin local:
+Quando as variáveis de seed estão configuradas, o serviço cria os usuários na inicialização se os e-mails ainda não existirem. O `docker-compose.yml` já define um administrador e um morador locais:
 
 ```text
+Síndico
 Email: sindico@teste.com
+Senha: senha123456
+
+Morador
+Email: morador@teste.com
 Senha: senha123456
 ```
 

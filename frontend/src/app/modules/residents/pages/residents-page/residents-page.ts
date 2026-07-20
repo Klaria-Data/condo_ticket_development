@@ -69,6 +69,9 @@ export class ResidentsPageComponent implements OnInit {
   }
 
   onViewModeChange(mode: ViewMode): void {
+    if (mode === 'SINDICO' && this.authService.getCurrentUser()?.perfil !== 'ADMIN') {
+      return;
+    }
     this.viewMode = mode;
   }
 

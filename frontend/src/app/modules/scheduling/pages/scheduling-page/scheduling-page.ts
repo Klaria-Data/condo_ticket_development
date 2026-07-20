@@ -43,6 +43,11 @@ export class SchedulingPageComponent implements OnInit {
   errorMessage = '';
   successMessage = '';
   isLoading = false;
+  selectedDuration = 1;
+
+  readonly durations = [1, 2, 3];
+  readonly openingHour = 8;
+  readonly closingHour = 22;
 
   readonly placeForm = this.fb.nonNullable.group({
     nome: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(120)]],
@@ -75,6 +80,9 @@ export class SchedulingPageComponent implements OnInit {
   }
 
   onViewModeChange(mode: ViewMode): void {
+    if (mode === 'SINDICO' && this.authService.getCurrentUser()?.perfil !== 'ADMIN') {
+      return;
+    }
     this.viewMode = mode;
   }
 
@@ -135,6 +143,66 @@ export class SchedulingPageComponent implements OnInit {
       });
   }
 
+  get minBookingDate(): string {
+    return this.formatDateForInput(new Date());
+  }
+
+  get availableSlots(): string[] {
+    const slots: string[] = [];
+    for (let hour = this.openingHour; hour < this.closingHour; hour += 1) {
+      const slot = `${String(hour).padStart(2, '0')}:00`;
+      if (!this.isSlotUnavailable(slot)) {
+        slots.push(slot);
+      }
+    }
+    return slots;
+  }
+
+  selectDuration(hours: number): void {
+    this.selectedDuration = hours;
+    const start = this.reservationForm.controls.inicio.value;
+    if (start && this.isSlotUnavailable(start)) {
+      this.clearSelectedTime();
+    } else if (start) {
+      this.setEndTime(start);
+    }
+  }
+
+  selectSlot(start: string): void {
+    if (this.isSlotUnavailable(start)) {
+      return;
+    }
+    this.reservationForm.patchValue({ inicio: start });
+    this.setEndTime(start);
+    this.errorMessage = '';
+  }
+
+  onDateOrPlaceChange(): void {
+    this.clearSelectedTime();
+  }
+
+  isSlotUnavailable(start: string): boolean {
+    const form = this.reservationForm.getRawValue();
+    if (!form.local_id || !form.data) {
+      return true;
+    }
+
+    const startMinutes = this.toMinutes(start);
+    const endMinutes = startMinutes + this.selectedDuration * 60;
+    if (endMinutes > this.closingHour * 60) {
+      return true;
+    }
+
+    return this.reservations.some((reservation) => {
+      if (reservation.local_id !== Number(form.local_id) || this.reservationDate(reservation.inicio) !== form.data) {
+        return false;
+      }
+      const reservedStart = this.toMinutes(this.reservationTime(reservation.inicio));
+      const reservedEnd = this.toMinutes(this.reservationTime(reservation.fim));
+      return startMinutes < reservedEnd && endMinutes > reservedStart;
+    });
+  }
+
   formatDateTime(value: string): string {
     return new Date(value).toLocaleString('pt-BR', {
       day: '2-digit',
@@ -178,6 +246,39 @@ export class SchedulingPageComponent implements OnInit {
       },
       error: (err) => this.handleError(err, 'Falha ao carregar locais agendaveis.'),
     });
+  }
+
+  private setEndTime(start: string): void {
+    this.reservationForm.patchValue({ fim: this.toTime(this.toMinutes(start) + this.selectedDuration * 60) });
+  }
+
+  private clearSelectedTime(): void {
+    this.reservationForm.patchValue({ inicio: '', fim: '' });
+  }
+
+  private toMinutes(time: string): number {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  }
+
+  private toTime(minutes: number): string {
+    return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+  }
+
+  private formatDateForInput(date: Date): string {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(date);
+  }
+
+  private reservationDate(value: string): string {
+    return this.formatDateForInput(new Date(value));
+  }
+
+  private reservationTime(value: string): string {
+    return new Intl.DateTimeFormat('pt-BR', {
+      timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    }).format(new Date(value));
   }
 
   private loadReservations(): void {
