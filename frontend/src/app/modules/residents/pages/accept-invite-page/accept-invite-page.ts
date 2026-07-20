@@ -42,7 +42,7 @@ export class AcceptInvitePageComponent implements OnInit {
   ngOnInit(): void {
     this.token = this.route.snapshot.paramMap.get('token') ?? '';
     if (!this.token) {
-      this.errorMessage = 'Convite invalido.';
+      this.errorMessage = 'Convite inválido.';
       return;
     }
 
@@ -52,7 +52,7 @@ export class AcceptInvitePageComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: () => {
-        this.errorMessage = 'Convite invalido ou expirado.';
+        this.errorMessage = 'Convite inválido ou expirado.';
         this.cdr.detectChanges();
       },
     });

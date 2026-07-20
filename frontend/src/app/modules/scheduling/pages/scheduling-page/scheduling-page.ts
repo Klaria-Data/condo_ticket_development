@@ -112,7 +112,7 @@ export class SchedulingPageComponent implements OnInit {
     const fim = `${form.data}T${form.fim}:00`;
 
     if (fim <= inicio) {
-      this.errorMessage = 'O horario final precisa ser maior que o inicial.';
+      this.errorMessage = 'O horário final precisa ser maior que o inicial.';
       this.successMessage = '';
       return;
     }
@@ -141,6 +141,7 @@ export class SchedulingPageComponent implements OnInit {
       month: 'short',
       hour: '2-digit',
       minute: '2-digit',
+      timeZone: 'America/Sao_Paulo',
     });
   }
 
@@ -148,10 +149,12 @@ export class SchedulingPageComponent implements OnInit {
     const start = new Date(reservation.inicio).toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit',
+      timeZone: 'America/Sao_Paulo',
     });
     const end = new Date(reservation.fim).toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit',
+      timeZone: 'America/Sao_Paulo',
     });
 
     return `${start} - ${end}`;
@@ -197,9 +200,9 @@ export class SchedulingPageComponent implements OnInit {
         this.authService.logout();
         return;
       }
-      this.errorMessage = 'Seu perfil nao permite esta acao.';
+      this.errorMessage = 'Seu perfil não permite esta ação.';
     } else if (err.status === 409) {
-      this.errorMessage = 'Horario indisponivel para este local.';
+      this.errorMessage = 'Horário indisponível para este local.';
     } else if (err.error?.detail) {
       this.errorMessage = err.error.detail;
     } else {

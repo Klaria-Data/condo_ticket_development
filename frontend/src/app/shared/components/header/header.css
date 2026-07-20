@@ -76,6 +76,12 @@ a.active {
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
+.logout-button {
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  background: #fff7f7;
+}
+
 @media (max-width: 900px) {
   .header,
   .right,

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Output } from '@angular/core';
+import { Component, EventEmitter, OnDestroy, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule, ImagePlus, X } from 'lucide-angular';
 import { Ticket } from '../../../../core/models/ticket.model';
@@ -11,7 +11,7 @@ import { Ticket } from '../../../../core/models/ticket.model';
   templateUrl: './new-ticket-modal.html',
   styleUrls: ['./new-ticket-modal.css']
 })
-export class NewTicketModalComponent {
+export class NewTicketModalComponent implements OnDestroy {
   @Output() close = new EventEmitter<void>();
   @Output() create = new EventEmitter<Ticket>();
 
@@ -23,6 +23,9 @@ export class NewTicketModalComponent {
   residentName = '';
   apartment = '';
   selectedFileName = '';
+  selectedImage?: File;
+  imagePreviewUrl?: string;
+  imageError = '';
   submitted = false;
 
   errors = {
@@ -40,9 +43,29 @@ export class NewTicketModalComponent {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
 
-    if (file) {
-      this.selectedFileName = file.name;
+    this.clearImage();
+    this.imageError = '';
+    if (!file) {
+      return;
     }
+
+    if (!file.type.startsWith('image/')) {
+      this.imageError = 'Selecione um arquivo de imagem válido.';
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      this.imageError = 'A imagem deve ter no máximo 10 MB.';
+      return;
+    }
+
+    this.selectedFileName = file.name;
+    this.selectedImage = file;
+    this.imagePreviewUrl = URL.createObjectURL(file);
+  }
+
+  ngOnDestroy(): void {
+    this.clearImage();
   }
 
   validateForm(): boolean {
@@ -98,11 +121,22 @@ export class NewTicketModalComponent {
       residentName: this.residentName.trim(),
       apartment: this.apartment.trim(),
       status: 'ABERTO',
-      createdAt: 'Hoje',
+      createdAt: new Date().toISOString(),
+      imageFile: this.selectedImage,
+      imageUrl: this.imagePreviewUrl,
       avatarColor: '#8b5cf6'
     };
 
     this.create.emit(newTicket);
     this.onClose();
+  }
+
+  private clearImage(): void {
+    if (this.imagePreviewUrl) {
+      URL.revokeObjectURL(this.imagePreviewUrl);
+    }
+    this.selectedFileName = '';
+    this.selectedImage = undefined;
+    this.imagePreviewUrl = undefined;
   }
 }

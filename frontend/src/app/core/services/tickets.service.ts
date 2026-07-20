@@ -57,6 +57,14 @@ export class TicketsService {
     );
   }
 
+  uploadImage(file: File): Observable<string> {
+    const formData = new FormData();
+    formData.append('image', file);
+    return this.http
+      .post<{ image_url: string }>(`${this.apiBaseUrl}/tickets/images`, formData)
+      .pipe(map((response) => this.resolveImageUrl(response.image_url)));
+  }
+
   /**
    * Atualiza o status de um ticket seguindo o fluxo ABERTO → EM_ANDAMENTO → RESOLVIDO.
    * Apenas usuários com perfil ADMIN podem executar esta ação.
@@ -80,6 +88,7 @@ export class TicketsService {
       updatedAt: this.toShortDate(ticket.data_atualizacao),
       createdAtRaw: ticket.data_criacao,
       updatedAtRaw: ticket.data_atualizacao,
+      imageUrl: ticket.imagem_url ? this.resolveImageUrl(ticket.imagem_url) : undefined,
       avatarColor: '#10bcd6',
     };
   }
@@ -90,6 +99,11 @@ export class TicketsService {
     return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: 'short',
+      timeZone: 'America/Sao_Paulo',
     });
+  }
+
+  private resolveImageUrl(url: string): string {
+    return url.startsWith('http') ? url : `${this.apiBaseUrl}${url}`;
   }
 }

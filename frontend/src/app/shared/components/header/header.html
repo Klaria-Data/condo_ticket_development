@@ -5,7 +5,7 @@
     </div>
     <div>
       <h1>CondoTicket</h1>
-      <p>Gerencie o condominio</p>
+      <p>Gerencie o condomínio</p>
     </div>
   </div>
 
@@ -32,11 +32,15 @@
           <lucide-icon [img]="UserRound" [size]="15" [strokeWidth]="2" />
           Morador
         </button>
-        <button type="button" [class.active]="viewMode === 'SINDICO'" (click)="setMode('SINDICO')">
+        <button *ngIf="canManageResidents" type="button" [class.active]="viewMode === 'SINDICO'" (click)="setMode('SINDICO')">
           <lucide-icon [img]="ShieldCheck" [size]="15" [strokeWidth]="2" />
-          Sindico
+          Síndico
         </button>
       </div>
     </div>
+    <button type="button" class="logout-button" (click)="logout()" aria-label="Sair da conta">
+      <lucide-icon [img]="LogOut" [size]="16" [strokeWidth]="2" />
+      Sair
+    </button>
   </div>
 </header>

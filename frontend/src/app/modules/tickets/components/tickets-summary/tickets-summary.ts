@@ -37,7 +37,7 @@ export class TicketsSummaryComponent {
   }
 
   get totalTrendText(): string {
-    return this.formatTrend(this.totalGrowthPercent, 'este mes');
+    return this.formatTrend(this.totalGrowthPercent, 'este mês');
   }
 
   get totalTrendClass(): string {

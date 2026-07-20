@@ -183,6 +183,13 @@
   font-weight: 600;
 }
 
+.image-preview {
+  width: min(100%, 260px);
+  max-height: 180px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
 .modal-footer {
   display: flex;
   justify-content: flex-end;

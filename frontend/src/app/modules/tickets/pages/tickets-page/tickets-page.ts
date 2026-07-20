@@ -88,11 +88,26 @@ export class TicketsPageComponent implements OnInit {
       return;
     }
 
+    if (ticket.imageFile) {
+      this.ticketsService.uploadImage(ticket.imageFile).subscribe({
+        next: (imageUrl) => this.persistTicket(ticket, imageUrl),
+        error: () => {
+          this.errorMessage = 'Falha ao enviar a imagem do chamado.';
+          this.cdr.detectChanges();
+        },
+      });
+      return;
+    }
+
+    this.persistTicket(ticket, null);
+  }
+
+  private persistTicket(ticket: Ticket, imageUrl: string | null): void {
     this.ticketsService
       .createTicket({
         titulo: ticket.title,
         descricao: ticket.description,
-        imagem_url: null,
+        imagem_url: imageUrl,
       })
       .subscribe({
         next: () => {
@@ -133,7 +148,7 @@ export class TicketsPageComponent implements OnInit {
 
         this.errorMessage =
           err.status === 400
-            ? 'Transicao de status invalida. Siga ABERTO -> EM_ANDAMENTO -> RESOLVIDO.'
+            ? 'Transição de status inválida. Siga ABERTO → EM_ANDAMENTO → RESOLVIDO.'
             : 'Falha ao atualizar status do ticket.';
         this.loadTickets();
         this.cdr.detectChanges();
