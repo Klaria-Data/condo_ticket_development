@@ -19,10 +19,20 @@
     />
 
     <app-ticket-list
-      [tickets]="filteredTickets"
+      [tickets]="paginatedTickets"
       [viewMode]="viewMode"
       (statusChange)="updateTicketStatus($event)"
     />
+
+    <nav *ngIf="totalPages > 1" class="pagination" aria-label="Paginação de chamados">
+      <button type="button" (click)="goToPage(currentPage - 1)" [disabled]="currentPage === 1">
+        Anterior
+      </button>
+      <span>Página {{ currentPage }} de {{ totalPages }}</span>
+      <button type="button" (click)="goToPage(currentPage + 1)" [disabled]="currentPage === totalPages">
+        Próxima
+      </button>
+    </nav>
   </main>
 
   <app-new-ticket-modal
