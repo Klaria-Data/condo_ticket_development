@@ -61,7 +61,7 @@ export class ResidentsPageComponent implements OnInit {
 
     this.viewMode = user.perfil === 'ADMIN' ? 'SINDICO' : 'MORADOR';
     if (user.perfil !== 'ADMIN') {
-      this.errorMessage = 'Apenas o sindico pode cadastrar moradores.';
+      this.errorMessage = 'Apenas o síndico pode cadastrar moradores.';
       return;
     }
 
@@ -69,6 +69,9 @@ export class ResidentsPageComponent implements OnInit {
   }
 
   onViewModeChange(mode: ViewMode): void {
+    if (mode === 'SINDICO' && this.authService.getCurrentUser()?.perfil !== 'ADMIN') {
+      return;
+    }
     this.viewMode = mode;
   }
 
@@ -111,6 +114,7 @@ export class ResidentsPageComponent implements OnInit {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
+      timeZone: 'America/Sao_Paulo',
     });
   }
 

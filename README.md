@@ -61,14 +61,19 @@ Servicos publicos:
 | API Gateway | http://localhost:8000 |
 | MySQL | interno no Docker como `mysql:3306` |
 
-Primeiro acesso local criado automaticamente pelo `auth` quando usar o `docker-compose.yml` padrao:
+Usuários locais criados automaticamente pelo `auth` ao usar o `docker-compose.yml` padrão:
 
 ```text
-Email: sindico@teste.com
+Síndico
+E-mail: sindico@teste.com
+Senha: senha123456
+
+Morador
+E-mail: morador@teste.com
 Senha: senha123456
 ```
 
-Essas credenciais sao apenas para desenvolvimento local. Em outro ambiente, sobrescreva as variaveis `SEED_ADMIN_*`.
+Essas credenciais são apenas para desenvolvimento local. Em outro ambiente, sobrescreva as variáveis `SEED_ADMIN_*` e `SEED_RESIDENT_*`.
 
 ## Como Rodar Localmente Sem Docker
 
@@ -127,11 +132,15 @@ SEED_ADMIN_NAME=Sindico Teste
 SEED_ADMIN_EMAIL=sindico@teste.com
 SEED_ADMIN_PASSWORD=senha123456
 SEED_ADMIN_UNIDADE=301
+SEED_RESIDENT_NAME=Morador Teste
+SEED_RESIDENT_EMAIL=morador@teste.com
+SEED_RESIDENT_PASSWORD=senha123456
+SEED_RESIDENT_UNIDADE=101
 ```
 
 Se `SMTP_HOST` nao estiver configurado, o backend nao envia email real. Nesse caso, o link do convite e retornado pela API e registrado nos logs, o que ajuda no desenvolvimento local.
 
-As variaveis `SEED_ADMIN_*` criam um sindico inicial se o e-mail ainda nao existir. Isso evita que um banco novo fique sem usuario administrador.
+As variáveis `SEED_ADMIN_*` e `SEED_RESIDENT_*` criam, respectivamente, um síndico e um morador de teste se os e-mails ainda não existirem.
 
 O MySQL nao e publicado no host por padrao para evitar conflito com instalacoes locais na porta `3306`. Para acessar o banco manualmente:
 

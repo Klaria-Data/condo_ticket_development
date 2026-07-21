@@ -231,6 +231,57 @@ textarea {
   gap: 10px;
 }
 
+.booking-step {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.duration-options,
+.slot-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.duration-options button,
+.slot-grid button {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.duration-options button.selected,
+.slot-grid button.selected {
+  border-color: #4f46e5;
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.slot-hint {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.selected-range {
+  margin: 0 0 14px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #065f46;
+  font-size: 13px;
+}
+
 .primary-button,
 .secondary-button {
   width: 100%;

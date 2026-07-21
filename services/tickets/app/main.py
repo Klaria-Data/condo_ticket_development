@@ -11,13 +11,16 @@ Apenas usuários com perfil ADMIN podem atualizar o status de um ticket.
 import logging
 import os
 import sys
+from pathlib import Path
+from uuid import uuid4
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
-from datetime import datetime
+from datetime import datetime, timezone
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.orm import Session, joinedload
 
@@ -27,6 +30,10 @@ from shared.models import LocalAgendavel, PerfilUsuario, ReservaLocal, StatusTic
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+UPLOADS_DIR = Path(os.getenv("TICKET_UPLOADS_DIR", "/app/uploads/tickets"))
+MAX_IMAGE_SIZE = 10 * 1024 * 1024
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 app = FastAPI(
     title="CondoTicket — Tickets Service",
@@ -91,11 +98,16 @@ class TicketResposta(BaseModel):
             descricao=ticket.descricao,
             imagem_url=ticket.imagem_url,
             status=ticket.status,
-            data_criacao=ticket.data_criacao,
-            data_atualizacao=ticket.data_atualizacao,
+            data_criacao=_as_utc(ticket.data_criacao),
+            data_atualizacao=_as_utc(ticket.data_atualizacao),
             usuario_nome=ticket.usuario.nome if ticket.usuario else None,
             unidade=ticket.usuario.unidade if ticket.usuario else None,
         )
+
+
+def _as_utc(value: datetime) -> datetime:
+    """Normaliza datas legadas sem fuso como UTC antes de enviá-las ao cliente."""
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
 
 
 class LocalAgendavelCriacao(BaseModel):
@@ -149,10 +161,10 @@ class ReservaLocalResposta(BaseModel):
             usuario_id=reserva.usuario_id,
             usuario_nome=reserva.usuario.nome if reserva.usuario else "",
             unidade=reserva.usuario.unidade if reserva.usuario else "",
-            inicio=reserva.inicio,
-            fim=reserva.fim,
+            inicio=_as_utc(reserva.inicio),
+            fim=_as_utc(reserva.fim),
             observacao=reserva.observacao,
-            data_criacao=reserva.data_criacao,
+            data_criacao=_as_utc(reserva.data_criacao),
         )
 
 
@@ -164,6 +176,26 @@ _PROXIMO_STATUS_VALIDO = {
     StatusTicket.EM_ANDAMENTO: StatusTicket.RESOLVIDO,
     StatusTicket.RESOLVIDO: StatusTicket.RESOLVIDO,
 }
+
+
+@app.post("/tickets/images", summary="Enviar imagem de ticket")
+async def enviar_imagem_ticket(
+    image: UploadFile = File(...),
+    current_user: Usuario = Depends(get_current_user),
+) -> dict[str, str]:
+    """Armazena uma imagem validada e retorna a URL pública para associá-la ao chamado."""
+    if image.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Formato de imagem inválido")
+
+    content = await image.read()
+    if not content or len(content) > MAX_IMAGE_SIZE:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A imagem deve ter no máximo 10 MB")
+
+    extension = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}[image.content_type]
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    filename = f"{current_user.id}-{uuid4().hex}{extension}"
+    (UPLOADS_DIR / filename).write_bytes(content)
+    return {"image_url": f"/tickets/uploads/{filename}"}
 
 
 @app.get(
@@ -225,6 +257,9 @@ def criar_ticket(
 
     logger.info("Ticket criado: id=%d usuario_id=%d", novo_ticket.id, current_user.id)
     return TicketResposta.from_orm_with_usuario(novo_ticket)
+
+
+app.mount("/tickets/uploads", StaticFiles(directory=UPLOADS_DIR, check_dir=False), name="ticket-uploads")
 
 
 @app.put(

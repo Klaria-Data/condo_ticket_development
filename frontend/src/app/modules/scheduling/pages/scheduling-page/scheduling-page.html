@@ -68,7 +68,7 @@
 
           <label>
             Local
-            <select formControlName="local_id">
+            <select formControlName="local_id" (change)="onDateOrPlaceChange()">
               <option [ngValue]="0">Selecione</option>
               <option *ngFor="let place of places" [ngValue]="place.id">{{ place.nome }}</option>
             </select>
@@ -76,18 +76,31 @@
 
           <label>
             Data
-            <input type="date" formControlName="data" />
+            <input type="date" formControlName="data" [min]="minBookingDate" (change)="onDateOrPlaceChange()" />
           </label>
 
-          <div class="time-grid">
-            <label>
-              Inicio
-              <input type="time" formControlName="inicio" />
-            </label>
-            <label>
-              Fim
-              <input type="time" formControlName="fim" />
-            </label>
+          <div class="booking-step">
+            <span>Duração</span>
+            <div class="duration-options">
+              <button *ngFor="let duration of durations" type="button" [class.selected]="selectedDuration === duration" (click)="selectDuration(duration)">
+                {{ duration }} {{ duration === 1 ? 'hora' : 'horas' }}
+              </button>
+            </div>
+          </div>
+
+          <div class="booking-step">
+            <span>Horários disponíveis</span>
+            <p class="slot-hint" *ngIf="!reservationForm.controls.local_id.value || !reservationForm.controls.data.value">Escolha o local e a data primeiro.</p>
+            <div class="slot-grid" *ngIf="reservationForm.controls.local_id.value && reservationForm.controls.data.value">
+              <button *ngFor="let slot of availableSlots" type="button" [class.selected]="reservationForm.controls.inicio.value === slot" (click)="selectSlot(slot)">
+                {{ slot }}
+              </button>
+              <p class="slot-hint" *ngIf="!availableSlots.length">Não há horários disponíveis para esta duração.</p>
+            </div>
+          </div>
+
+          <div class="selected-range" *ngIf="reservationForm.controls.inicio.value">
+            Reserva selecionada: <strong>{{ reservationForm.controls.inicio.value }} às {{ reservationForm.controls.fim.value }}</strong>
           </div>
 
           <label>
@@ -95,7 +108,7 @@
             <textarea rows="3" formControlName="observacao"></textarea>
           </label>
 
-          <button type="submit" class="primary-button" [disabled]="!places.length">
+          <button type="submit" class="primary-button" [disabled]="!places.length || reservationForm.invalid">
             <lucide-icon [img]="Plus" [size]="17" [strokeWidth]="2" />
             Reservar
           </button>

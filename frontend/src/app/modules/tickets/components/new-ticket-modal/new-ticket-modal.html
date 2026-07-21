@@ -93,7 +93,9 @@
           <span *ngIf="selectedFileName" class="file-name">
             {{ selectedFileName }}
           </span>
+          <img *ngIf="imagePreviewUrl" class="image-preview" [src]="imagePreviewUrl" alt="Prévia da imagem selecionada" />
         </label>
+        <small *ngIf="imageError" class="error-message">{{ imageError }}</small>
       </div>
     </div>
 

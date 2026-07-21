@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   UsersRound,
   Wrench,
+  LogOut,
 } from 'lucide-angular';
 import { ViewMode } from '../../../core/models/ticket.model';
 import { AuthService } from '../../../core/services/auth.service';
@@ -30,6 +31,7 @@ export class AppHeaderComponent {
   readonly ShieldCheck = ShieldCheck;
   readonly UsersRound = UsersRound;
   readonly Wrench = Wrench;
+  readonly LogOut = LogOut;
 
   constructor(private readonly authService: AuthService) {}
 
@@ -38,7 +40,14 @@ export class AppHeaderComponent {
   }
 
   setMode(mode: ViewMode): void {
+    if (mode === 'SINDICO' && !this.canManageResidents) {
+      return;
+    }
     this.viewMode = mode;
     this.viewModeChange.emit(mode);
+  }
+
+  logout(): void {
+    this.authService.logout();
   }
 }

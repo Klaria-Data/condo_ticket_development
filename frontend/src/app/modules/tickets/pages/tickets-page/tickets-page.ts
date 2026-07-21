@@ -42,6 +42,8 @@ export class TicketsPageComponent implements OnInit {
   activeFilter: TicketFilter = 'TODOS';
   isNewTicketModalOpen = false;
   errorMessage = '';
+  currentPage = 1;
+  readonly pageSize = 6;
 
   constructor(
     private readonly ticketsService: TicketsService,
@@ -61,15 +63,20 @@ export class TicketsPageComponent implements OnInit {
   }
 
   onViewModeChange(mode: ViewMode): void {
+    if (mode === 'SINDICO' && this.authService.getCurrentUser()?.perfil !== 'ADMIN') {
+      return;
+    }
     this.viewMode = mode;
   }
 
   onSearchChange(value: string): void {
     this.search = value;
+    this.currentPage = 1;
   }
 
   onFilterChange(filter: TicketFilter): void {
     this.activeFilter = filter;
+    this.currentPage = 1;
   }
 
   onNewTicket(): void {
@@ -88,11 +95,26 @@ export class TicketsPageComponent implements OnInit {
       return;
     }
 
+    if (ticket.imageFile) {
+      this.ticketsService.uploadImage(ticket.imageFile).subscribe({
+        next: (imageUrl) => this.persistTicket(ticket, imageUrl),
+        error: () => {
+          this.errorMessage = 'Falha ao enviar a imagem do chamado.';
+          this.cdr.detectChanges();
+        },
+      });
+      return;
+    }
+
+    this.persistTicket(ticket, null);
+  }
+
+  private persistTicket(ticket: Ticket, imageUrl: string | null): void {
     this.ticketsService
       .createTicket({
         titulo: ticket.title,
         descricao: ticket.description,
-        imagem_url: null,
+        imagem_url: imageUrl,
       })
       .subscribe({
         next: () => {
@@ -133,7 +155,7 @@ export class TicketsPageComponent implements OnInit {
 
         this.errorMessage =
           err.status === 400
-            ? 'Transicao de status invalida. Siga ABERTO -> EM_ANDAMENTO -> RESOLVIDO.'
+            ? 'Transição de status inválida. Siga ABERTO → EM_ANDAMENTO → RESOLVIDO.'
             : 'Falha ao atualizar status do ticket.';
         this.loadTickets();
         this.cdr.detectChanges();
@@ -180,5 +202,21 @@ export class TicketsPageComponent implements OnInit {
 
       return matchesSearch && matchesFilter;
     });
+  }
+
+  get totalPages(): number {
+    return Math.max(1, Math.ceil(this.filteredTickets.length / this.pageSize));
+  }
+
+  get paginatedTickets(): Ticket[] {
+    const page = Math.min(this.currentPage, this.totalPages);
+    const start = (page - 1) * this.pageSize;
+    return this.filteredTickets.slice(start, start + this.pageSize);
+  }
+
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.totalPages) {
+      this.currentPage = page;
+    }
   }
 }

@@ -13,5 +13,7 @@ export interface Ticket {
   updatedAt?: string;
   createdAtRaw?: string;
   updatedAtRaw?: string;
+  imageUrl?: string;
+  imageFile?: File;
   avatarColor: string;
 }
