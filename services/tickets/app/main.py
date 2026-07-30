@@ -209,15 +209,11 @@ def listar_tickets(
 ) -> list[TicketResposta]:
     """Retorna a lista de tickets visível para o usuário autenticado.
 
-    - **ADMIN**: vê todos os tickets do condomínio.
-    - **MORADOR**: vê apenas seus próprios tickets.
+    - **ADMIN** e **MORADOR**: veem todos os tickets do condomínio.
 
     Os resultados incluem nome e unidade do morador que abriu o ticket.
     """
     query = db.query(Ticket).options(joinedload(Ticket.usuario))
-
-    if current_user.perfil != PerfilUsuario.ADMIN:
-        query = query.filter(Ticket.usuario_id == current_user.id)
 
     tickets = query.order_by(Ticket.data_criacao.desc()).all()
     return [TicketResposta.from_orm_with_usuario(t) for t in tickets]

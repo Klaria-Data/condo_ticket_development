@@ -153,7 +153,7 @@ docker compose exec mysql mysql -uroot -proot condoticket
 | Perfil | Permissoes |
 | --- | --- |
 | `ADMIN` | ve todos os chamados, atualiza status, cadastra locais agendaveis, convida moradores |
-| `MORADOR` | cria chamados, ve seus chamados, comenta, reserva locais disponiveis |
+| `MORADOR` | cria e ve todos os chamados, comenta, reserva locais disponiveis |
 
 ## Principais Rotas da API
 

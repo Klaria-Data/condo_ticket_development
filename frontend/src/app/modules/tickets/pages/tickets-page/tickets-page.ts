@@ -42,6 +42,7 @@ export class TicketsPageComponent implements OnInit {
   activeFilter: TicketFilter = 'TODOS';
   isNewTicketModalOpen = false;
   errorMessage = '';
+  showOnlyMyTickets = false;
   currentPage = 1;
   readonly pageSize = 6;
 
@@ -107,6 +108,11 @@ export class TicketsPageComponent implements OnInit {
     }
 
     this.persistTicket(ticket, null);
+  }
+
+  toggleOwnershipFilter(): void {
+    this.showOnlyMyTickets = !this.showOnlyMyTickets;
+    this.currentPage = 1;
   }
 
   private persistTicket(ticket: Ticket, imageUrl: string | null): void {
@@ -187,6 +193,7 @@ export class TicketsPageComponent implements OnInit {
   }
 
   get filteredTickets(): Ticket[] {
+    const currentUserId = this.authService.getCurrentUser()?.id;
     return this.tickets.filter((ticket) => {
       const normalizedSearch = this.search.trim().toLowerCase();
 
@@ -200,7 +207,9 @@ export class TicketsPageComponent implements OnInit {
       const matchesFilter =
         this.activeFilter === 'TODOS' || ticket.status === this.activeFilter;
 
-      return matchesSearch && matchesFilter;
+      const matchesOwnership = !this.showOnlyMyTickets || ticket.ownerId === currentUserId;
+
+      return matchesSearch && matchesFilter && matchesOwnership;
     });
   }
 

@@ -12,7 +12,9 @@ import { ViewMode } from '../../../../core/models/ticket.model';
 })
 export class PageHeaderComponent {
   @Input() viewMode: ViewMode = 'MORADOR';
+  @Input() showOnlyMyTickets = false;
   @Output() newTicket = new EventEmitter<void>();
+  @Output() ownershipFilterToggle = new EventEmitter<void>();
 
   readonly Plus = Plus;
 }

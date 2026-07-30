@@ -11,13 +11,13 @@
     </ng-template>
   </div>
 
-  <button
-    *ngIf="viewMode === 'MORADOR'"
-    type="button"
-    class="new-ticket-btn"
-    (click)="newTicket.emit()"
-  >
-    <lucide-icon [img]="Plus" [size]="16" [strokeWidth]="2.5" color="#fff" />
-    Novo Chamado
-  </button>
+  <div *ngIf="viewMode === 'MORADOR'" class="header-actions">
+    <button type="button" class="ownership-filter-btn" (click)="ownershipFilterToggle.emit()">
+      {{ showOnlyMyTickets ? 'Ver todos os chamados' : 'Ver meus chamados' }}
+    </button>
+    <button type="button" class="new-ticket-btn" (click)="newTicket.emit()">
+      <lucide-icon [img]="Plus" [size]="16" [strokeWidth]="2.5" color="#fff" />
+      Novo Chamado
+    </button>
+  </div>
 </section>

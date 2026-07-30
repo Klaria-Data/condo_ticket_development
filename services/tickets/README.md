@@ -16,7 +16,7 @@ Porta interna: `8002`.
 
 | Metodo | Rota | Auth | Perfil | Descricao |
 | --- | --- | --- | --- | --- |
-| GET | `/tickets` | Sim | Qualquer | Lista chamados visiveis ao usuario |
+| GET | `/tickets` | Sim | Qualquer | Lista todos os chamados do condominio |
 | POST | `/tickets` | Sim | Qualquer | Cria chamado com status `ABERTO` |
 | PUT | `/tickets/{id}/status` | Sim | ADMIN | Avanca status do chamado |
 

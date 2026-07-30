@@ -79,6 +79,7 @@ export class TicketsService {
   private toUiTicket(ticket: ApiTicket): Ticket {
     return {
       id: ticket.id,
+      ownerId: ticket.usuario_id,
       title: ticket.titulo,
       description: ticket.descricao,
       status: ticket.status,

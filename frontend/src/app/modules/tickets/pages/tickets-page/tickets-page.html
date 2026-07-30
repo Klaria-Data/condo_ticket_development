@@ -8,7 +8,9 @@
     ></app-tickets-summary>
     <app-page-header
       [viewMode]="viewMode"
+      [showOnlyMyTickets]="showOnlyMyTickets"
       (newTicket)="onNewTicket()"
+      (ownershipFilterToggle)="toggleOwnershipFilter()"
     />
 
     <app-ticket-filters

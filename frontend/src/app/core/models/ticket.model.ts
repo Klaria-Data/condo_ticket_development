@@ -4,6 +4,7 @@ export type TicketFilter = 'TODOS' | TicketStatus;
 
 export interface Ticket {
   id: number;
+  ownerId?: number;
   title: string;
   description: string;
   status: TicketStatus;
