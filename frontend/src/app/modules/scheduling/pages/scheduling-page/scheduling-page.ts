@@ -44,6 +44,7 @@ export class SchedulingPageComponent implements OnInit {
   successMessage = '';
   isLoading = false;
   selectedDuration = 1;
+  showNoPlacesDialog = false;
 
   readonly durations = [1, 2, 3];
   readonly openingHour = 8;
@@ -105,7 +106,7 @@ export class SchedulingPageComponent implements OnInit {
           this.errorMessage = '';
           this.loadData();
         },
-        error: (err) => this.handleError(err, 'Falha ao cadastrar local agendavel.'),
+        error: (err) => this.handleError(err, 'Falha ao cadastrar local agendável.'),
       });
   }
 
@@ -116,8 +117,8 @@ export class SchedulingPageComponent implements OnInit {
     }
 
     const form = this.reservationForm.getRawValue();
-    const inicio = `${form.data}T${form.inicio}:00`;
-    const fim = `${form.data}T${form.fim}:00`;
+    const inicio = this.toUtcIso(form.data, form.inicio);
+    const fim = this.toUtcIso(form.data, form.fim);
 
     if (fim <= inicio) {
       this.errorMessage = 'O horário final precisa ser maior que o inicial.';
@@ -134,7 +135,8 @@ export class SchedulingPageComponent implements OnInit {
       })
       .subscribe({
         next: () => {
-          this.reservationForm.patchValue({ inicio: '', fim: '', observacao: '' });
+          this.reservationForm.reset();
+          this.selectedDuration = 1;
           this.successMessage = 'Reserva confirmada automaticamente.';
           this.errorMessage = '';
           this.loadData();
@@ -145,6 +147,17 @@ export class SchedulingPageComponent implements OnInit {
 
   get minBookingDate(): string {
     return this.formatDateForInput(new Date());
+  }
+
+  /** Texto do aviso exibido quando o condomínio ainda não tem áreas cadastradas. */
+  get noPlacesMessage(): string {
+    return this.viewMode === 'SINDICO'
+      ? 'Não há áreas cadastradas para agendamento. Use o formulário "Novo local" para cadastrar a primeira.'
+      : 'Não há áreas cadastradas para agendamento. Entre em contato com o síndico.';
+  }
+
+  closeNoPlacesDialog(): void {
+    this.showNoPlacesDialog = false;
   }
 
   get availableSlots(): string[] {
@@ -239,12 +252,13 @@ export class SchedulingPageComponent implements OnInit {
     this.schedulingService.listPlaces().subscribe({
       next: (places) => {
         this.places = places;
+        this.showNoPlacesDialog = !places.length;
         if (places.length && !this.reservationForm.controls.local_id.value) {
           this.reservationForm.patchValue({ local_id: places[0].id });
         }
         this.loadReservations();
       },
-      error: (err) => this.handleError(err, 'Falha ao carregar locais agendaveis.'),
+      error: (err) => this.handleError(err, 'Falha ao carregar locais agendáveis.'),
     });
   }
 
@@ -254,6 +268,18 @@ export class SchedulingPageComponent implements OnInit {
 
   private clearSelectedTime(): void {
     this.reservationForm.patchValue({ inicio: '', fim: '' });
+  }
+
+  /**
+   * Converte a data e a hora escolhidas (horário local do morador) em ISO UTC.
+   *
+   * Enviar a data sem fuso faria o backend gravar o horário local como se fosse
+   * UTC, e a reserva voltaria com algumas horas de diferença.
+   */
+  private toUtcIso(date: string, time: string): string {
+    const [year, month, day] = date.split('-').map(Number);
+    const [hour, minute] = time.split(':').map(Number);
+    return new Date(year, month - 1, day, hour, minute, 0, 0).toISOString();
   }
 
   private toMinutes(time: string): number {

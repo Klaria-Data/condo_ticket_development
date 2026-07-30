@@ -27,8 +27,20 @@ export class TicketCardComponent {
 
   showComments = false;
 
+  /** Próximo status permitido para cada etapa — espelha a regra do backend. */
+  private readonly nextStatus: Record<TicketStatus, TicketStatus> = {
+    ABERTO: 'EM_ANDAMENTO',
+    EM_ANDAMENTO: 'RESOLVIDO',
+    RESOLVIDO: 'RESOLVIDO',
+  };
+
   get initials(): string {
     return getInitials(this.ticket.residentName);
+  }
+
+  /** O fluxo é sequencial: só o status atual e o próximo da fila ficam disponíveis. */
+  isStatusSelectable(status: TicketStatus): boolean {
+    return status === this.ticket.status || status === this.nextStatus[this.ticket.status];
   }
 
   changeStatus(newStatus: TicketStatus): void {

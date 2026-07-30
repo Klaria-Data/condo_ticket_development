@@ -41,34 +41,9 @@
         </small>
       </div>
 
-      <div class="row">
-        <div class="field half">
-          <label for="residentName">Nome do Morador <span class="required">*</span></label>
-          <input
-            id="residentName"
-            type="text"
-            [(ngModel)]="residentName"
-            placeholder="Ex: João Silva"
-            [class.invalid]="submitted && !!errors.residentName"
-          />
-          <small *ngIf="submitted && errors.residentName" class="error-message">
-            {{ errors.residentName }}
-          </small>
-        </div>
-
-        <div class="field half">
-          <label for="apartment">Unidade <span class="required">*</span></label>
-          <input
-            id="apartment"
-            type="text"
-            [(ngModel)]="apartment"
-            placeholder="Ex: Apto 101"
-            [class.invalid]="submitted && !!errors.apartment"
-          />
-          <small *ngIf="submitted && errors.apartment" class="error-message">
-            {{ errors.apartment }}
-          </small>
-        </div>
+      <div class="field full">
+        <span class="requester-label">Aberto por</span>
+        <p class="requester">{{ residentName }} · {{ apartment }}</p>
       </div>
 
       <div class="field full">

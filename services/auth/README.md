@@ -16,7 +16,7 @@ Porta interna: `8001`.
 
 | Metodo | Rota | Auth | Perfil | Descricao |
 | --- | --- | --- | --- | --- |
-| POST | `/registro` | Nao | - | Registra usuario diretamente |
+| POST | `/registro` | Nao | - | Registra usuario diretamente (sempre como MORADOR) |
 | POST | `/login` | Nao | - | Retorna JWT |
 | POST | `/moradores/convites` | Sim | ADMIN | Cria convite para morador |
 | GET | `/moradores/convites` | Sim | ADMIN | Lista convites enviados |

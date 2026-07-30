@@ -2,6 +2,13 @@
 
 <div class="page">
   <main class="content">
+    <div *ngIf="errorMessage" class="alert error" role="alert">
+      <span>{{ errorMessage }}</span>
+      <button type="button" class="alert-close" (click)="dismissError()" aria-label="Fechar aviso">
+        &times;
+      </button>
+    </div>
+
      <app-tickets-summary
       *ngIf="viewMode === 'SINDICO'"
       [tickets]="tickets"

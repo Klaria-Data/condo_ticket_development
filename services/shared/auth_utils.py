@@ -65,7 +65,14 @@ def get_current_user(
         logger.warning("Falha ao decodificar JWT: %s", exc)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token invalido") from exc
 
-    user = db.query(Usuario).filter(Usuario.id == int(user_id)).first()
+    try:
+        usuario_pk = int(user_id)
+    except (TypeError, ValueError):
+        # sub não numérico: token forjado ou de outra aplicação — 401, não 500.
+        logger.warning("JWT com subject invalido: %r", user_id)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token invalido")
+
+    user = db.query(Usuario).filter(Usuario.id == usuario_pk).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario nao encontrado")
 

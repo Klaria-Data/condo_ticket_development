@@ -131,6 +131,17 @@ class ReservaLocalCriacao(BaseModel):
     fim: datetime
     observacao: str | None = Field(default=None, max_length=500)
 
+    @field_validator("inicio", "fim")
+    @classmethod
+    def normalizar_fuso(cls, value: datetime) -> datetime:
+        """Converte o horário recebido para UTC sem tzinfo.
+
+        As colunas DATETIME guardam UTC sem offset e a leitura aplica ``_as_utc``.
+        Sem esta conversão a reserva seria gravada no horário local do morador e
+        devolvida como se fosse UTC, exibindo um horário diferente do reservado.
+        """
+        return value.astimezone(timezone.utc).replace(tzinfo=None) if value.tzinfo else value
+
     @field_validator("fim")
     @classmethod
     def validar_periodo(cls, fim: datetime, info):

@@ -4,7 +4,7 @@ Responsabilidade: chat/comentários dos tickets — listar, criar, editar e dele
 Porta padrão: 8003 (exposta internamente; o nginx roteia /tickets/*/comentarios para cá).
 
 Regras de permissão:
-    - Qualquer usuário autenticado pode listar e criar comentários.
+    - O morador lista e cria comentários apenas nos próprios chamados; o ADMIN, em todos.
     - Apenas o autor do comentário ou um ADMIN pode editar ou deletar.
 """
 
@@ -14,7 +14,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -51,6 +51,16 @@ app.add_middleware(
 # ── Schemas ──────────────────────────────────────────────────────────────────
 
 
+def _as_utc(value: datetime) -> datetime:
+    """Normaliza datas gravadas sem fuso como UTC antes de enviá-las ao cliente.
+
+    As colunas DATETIME do MySQL guardam o horário UTC sem o offset. Sem esta
+    normalização o cliente interpretaria a data como horário local e exibiria
+    o comentário adiantado (podendo virar o dia).
+    """
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+
+
 class ComentarioTicketCriacao(BaseModel):
     """Payload para criar um novo comentário."""
 
@@ -83,7 +93,7 @@ class ComentarioTicketResposta(BaseModel):
             ticket_id=comentario.ticket_id,
             usuario_id=comentario.usuario_id,
             mensagem=comentario.mensagem,
-            data_envio=comentario.data_envio,
+            data_envio=_as_utc(comentario.data_envio),
             usuario_nome=comentario.usuario.nome if comentario.usuario else None,
         )
 
@@ -91,11 +101,23 @@ class ComentarioTicketResposta(BaseModel):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-def _get_ticket_or_404(ticket_id: int, db: Session) -> Ticket:
-    """Retorna o ticket ou lança 404 se não existir."""
+def _get_ticket_visivel(ticket_id: int, current_user: Usuario, db: Session) -> Ticket:
+    """Retorna o ticket se o usuário puder vê-lo.
+
+    Espelha a regra de ``GET /tickets``: o morador só enxerga os próprios chamados
+    e o ADMIN enxerga todos. Sem esta checagem, bastava adivinhar o id do chamado
+    para ler — e comentar — a conversa de outro morador.
+    """
     ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket nao encontrado")
+
+    if ticket.usuario_id != current_user.id and current_user.perfil != PerfilUsuario.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Sem permissao para acessar os comentarios deste chamado",
+        )
+
     return ticket
 
 
@@ -138,9 +160,9 @@ def listar_comentarios_ticket(
 ) -> list[ComentarioTicketResposta]:
     """Retorna todos os comentários de um ticket em ordem cronológica crescente.
 
-    Qualquer usuário autenticado pode visualizar os comentários.
+    O morador só enxerga os comentários dos chamados que abriu; o ADMIN, de todos.
     """
-    _get_ticket_or_404(ticket_id, db)
+    _get_ticket_visivel(ticket_id, current_user, db)
 
     comentarios = (
         db.query(ComentarioTicket)
@@ -166,10 +188,10 @@ def criar_comentario_ticket(
 ) -> ComentarioTicketResposta:
     """Adiciona um novo comentário/mensagem ao chat do ticket.
 
-    Qualquer usuário autenticado (ADMIN ou MORADOR) pode comentar.
+    O morador só comenta nos chamados que abriu; o ADMIN, em todos.
     O comentário é automaticamente associado ao usuário autenticado.
     """
-    _get_ticket_or_404(ticket_id, db)
+    _get_ticket_visivel(ticket_id, current_user, db)
 
     novo_comentario = ComentarioTicket(
         ticket_id=ticket_id,
@@ -204,7 +226,7 @@ def editar_comentario_ticket(
     Apenas o **autor** do comentário ou um **ADMIN** podem editar.
     Retorna 403 se o usuário não tiver permissão e 404 se o comentário não existir.
     """
-    _get_ticket_or_404(ticket_id, db)
+    _get_ticket_visivel(ticket_id, current_user, db)
     comentario = _get_comentario_or_404(comentario_id, ticket_id, db)
     _verificar_permissao(comentario, current_user, "editar")
 
@@ -233,7 +255,7 @@ def deletar_comentario_ticket(
     Retorna 204 No Content em caso de sucesso.
     Retorna 403 se o usuário não tiver permissão e 404 se o comentário não existir.
     """
-    _get_ticket_or_404(ticket_id, db)
+    _get_ticket_visivel(ticket_id, current_user, db)
     comentario = _get_comentario_or_404(comentario_id, ticket_id, db)
     _verificar_permissao(comentario, current_user, "deletar")
 

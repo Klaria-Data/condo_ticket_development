@@ -13,7 +13,7 @@ import hashlib
 import secrets
 import smtplib
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 
 # Permite importar o pacote shared independente do diretório de trabalho
@@ -61,13 +61,17 @@ app.add_middleware(
 
 
 class UsuarioRegistro(BaseModel):
-    """Payload para registrar um novo usuário."""
+    """Payload para registrar um novo usuário.
+
+    O perfil não faz parte do payload: o registro é público e criaria um síndico
+    para qualquer um que enviasse ``perfil: ADMIN``. Contas ADMIN só nascem pelo
+    seed inicial (SEED_ADMIN_*) ou diretamente no banco.
+    """
 
     nome: str = Field(min_length=3, max_length=120)
     email: EmailStr
     senha: str = Field(min_length=8, max_length=128)
     unidade: str = Field(min_length=1, max_length=30)
-    perfil: PerfilUsuario = PerfilUsuario.MORADOR
 
 
 class UsuarioResposta(BaseModel):
@@ -127,6 +131,17 @@ class ConviteMoradorPublico(BaseModel):
 
 class AceitarConviteMorador(BaseModel):
     senha: str = Field(min_length=8, max_length=128)
+
+
+def as_utc(value: datetime | None) -> datetime | None:
+    """Marca datas gravadas sem fuso como UTC antes de enviá-las ao cliente.
+
+    As colunas DATETIME guardam o horário UTC sem offset; sem esta marcação o
+    navegador interpreta a data como horário local e exibe o dia errado.
+    """
+    if value is None:
+        return None
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
 
 
 def hash_invite_token(token: str) -> str:
@@ -253,7 +268,7 @@ def registrar_usuario(payload: UsuarioRegistro, db: Session = Depends(get_db)) -
 
     - Valida que o e-mail ainda não está cadastrado.
     - Armazena a senha como hash bcrypt (nunca em texto plano).
-    - O perfil padrão é MORADOR; use ADMIN para síndicos/administradores.
+    - O usuário criado é sempre MORADOR, pois a rota é pública.
     """
     if db.query(Usuario).filter(Usuario.email == payload.email).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email ja cadastrado")
@@ -263,7 +278,7 @@ def registrar_usuario(payload: UsuarioRegistro, db: Session = Depends(get_db)) -
         email=payload.email,
         senha_hash=hash_password(payload.senha),
         unidade=payload.unidade,
-        perfil=payload.perfil,
+        perfil=PerfilUsuario.MORADOR,
     )
 
     db.add(novo_usuario)
@@ -354,9 +369,9 @@ def criar_convite_morador(
         email=convite.email,
         unidade=convite.unidade,
         usado=convite.usado,
-        data_criacao=convite.data_criacao,
-        data_expiracao=convite.data_expiracao,
-        data_uso=convite.data_uso,
+        data_criacao=as_utc(convite.data_criacao),
+        data_expiracao=as_utc(convite.data_expiracao),
+        data_uso=as_utc(convite.data_uso),
         convite_url=convite_url,
     )
 
@@ -378,9 +393,9 @@ def listar_convites_moradores(
             email=convite.email,
             unidade=convite.unidade,
             usado=convite.usado,
-            data_criacao=convite.data_criacao,
-            data_expiracao=convite.data_expiracao,
-            data_uso=convite.data_uso,
+            data_criacao=as_utc(convite.data_criacao),
+            data_expiracao=as_utc(convite.data_expiracao),
+            data_uso=as_utc(convite.data_uso),
         )
         for convite in convites
     ]
@@ -397,7 +412,7 @@ def consultar_convite_morador(token: str, db: Session = Depends(get_db)) -> Conv
         nome=convite.nome,
         email=convite.email,
         unidade=convite.unidade,
-        data_expiracao=convite.data_expiracao,
+        data_expiracao=as_utc(convite.data_expiracao),
     )
 
 

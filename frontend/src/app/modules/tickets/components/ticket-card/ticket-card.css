@@ -81,6 +81,18 @@ h2 {
   border-radius: 14px;
 }
 
+.status-hint {
+  display: block;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.status-dropdown select option:disabled {
+  color: #94a3b8;
+  background: #f1f5f9;
+}
+
 .status-dropdown select {
   border-radius: 14px;
   padding: 10px 14px;

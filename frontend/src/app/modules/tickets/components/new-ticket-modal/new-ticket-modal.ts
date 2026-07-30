@@ -3,6 +3,7 @@ import { Component, EventEmitter, OnDestroy, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule, ImagePlus, X } from 'lucide-angular';
 import { Ticket } from '../../../../core/models/ticket.model';
+import { AuthService } from '../../../../core/services/auth.service';
 
 @Component({
   selector: 'app-new-ticket-modal',
@@ -20,8 +21,6 @@ export class NewTicketModalComponent implements OnDestroy {
 
   title = '';
   description = '';
-  residentName = '';
-  apartment = '';
   selectedFileName = '';
   selectedImage?: File;
   imagePreviewUrl?: string;
@@ -30,10 +29,20 @@ export class NewTicketModalComponent implements OnDestroy {
 
   errors = {
     title: '',
-    description: '',
-    residentName: '',
-    apartment: ''
+    description: ''
   };
+
+  constructor(private readonly authService: AuthService) {}
+
+  /** Nome do morador logado — vem do cadastro, não é digitado no chamado. */
+  get residentName(): string {
+    return this.authService.getCurrentUser()?.nome ?? 'Desconhecido';
+  }
+
+  /** Unidade do morador logado — vem do cadastro, não é digitada no chamado. */
+  get apartment(): string {
+    return this.authService.getCurrentUser()?.unidade ?? '---';
+  }
 
   onClose(): void {
     this.close.emit();
@@ -71,9 +80,7 @@ export class NewTicketModalComponent implements OnDestroy {
   validateForm(): boolean {
     this.errors = {
       title: '',
-      description: '',
-      residentName: '',
-      apartment: ''
+      description: ''
     };
 
     let isValid = true;
@@ -94,16 +101,6 @@ export class NewTicketModalComponent implements OnDestroy {
       isValid = false;
     }
 
-    if (!this.residentName.trim()) {
-      this.errors.residentName = 'Informe o nome do morador.';
-      isValid = false;
-    }
-
-    if (!this.apartment.trim()) {
-      this.errors.apartment = 'Informe a unidade do morador.';
-      isValid = false;
-    }
-
     return isValid;
   }
 
@@ -118,8 +115,8 @@ export class NewTicketModalComponent implements OnDestroy {
       id: Date.now(),
       title: this.title.trim(),
       description: this.description.trim(),
-      residentName: this.residentName.trim(),
-      apartment: this.apartment.trim(),
+      residentName: this.residentName,
+      apartment: this.apartment,
       status: 'ABERTO',
       createdAt: new Date().toISOString(),
       imageFile: this.selectedImage,

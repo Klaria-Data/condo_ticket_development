@@ -15,20 +15,18 @@
       />
 
       <div *ngIf="viewMode === 'SINDICO'" class="status-dropdown">
-
-<select
-  [ngModel]="ticket.status"
-  (ngModelChange)="changeStatus($event)"
-  [ngClass]="ticket.status.toLowerCase()"
->
-
-<option value="ABERTO">Aberto</option>
-<option value="EM_ANDAMENTO">Em Andamento</option>
-<option value="RESOLVIDO">Resolvido</option>
-
-</select>
-
-</div>
+        <select
+          [ngModel]="ticket.status"
+          (ngModelChange)="changeStatus($event)"
+          [ngClass]="ticket.status.toLowerCase()"
+          title="O status avança uma etapa por vez: Aberto → Em Andamento → Resolvido."
+        >
+          <option value="ABERTO" [disabled]="!isStatusSelectable('ABERTO')">Aberto</option>
+          <option value="EM_ANDAMENTO" [disabled]="!isStatusSelectable('EM_ANDAMENTO')">Em Andamento</option>
+          <option value="RESOLVIDO" [disabled]="!isStatusSelectable('RESOLVIDO')">Resolvido</option>
+        </select>
+        <small class="status-hint">Avance uma etapa por vez: Aberto → Em Andamento → Resolvido.</small>
+      </div>
 
 
 

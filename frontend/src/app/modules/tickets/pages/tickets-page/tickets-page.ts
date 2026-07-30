@@ -98,10 +98,7 @@ export class TicketsPageComponent implements OnInit {
     if (ticket.imageFile) {
       this.ticketsService.uploadImage(ticket.imageFile).subscribe({
         next: (imageUrl) => this.persistTicket(ticket, imageUrl),
-        error: () => {
-          this.errorMessage = 'Falha ao enviar a imagem do chamado.';
-          this.cdr.detectChanges();
-        },
+        error: (err: HttpErrorResponse) => this.handleError(err, 'Falha ao enviar a imagem do chamado.'),
       });
       return;
     }
@@ -122,14 +119,7 @@ export class TicketsPageComponent implements OnInit {
           this.loadTickets();
           this.cdr.detectChanges();
         },
-        error: (err: HttpErrorResponse) => {
-          if (err.status === 401 || err.status === 403) {
-            this.authService.logout();
-            return;
-          }
-          this.errorMessage = 'Falha ao criar chamado no backend.';
-          this.cdr.detectChanges();
-        },
+        error: (err: HttpErrorResponse) => this.handleError(err, 'Falha ao criar chamado no backend.'),
       });
   }
 
@@ -148,19 +138,42 @@ export class TicketsPageComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err: HttpErrorResponse) => {
-        if (err.status === 401 || err.status === 403) {
-          this.authService.logout();
-          return;
-        }
-
-        this.errorMessage =
+        const mensagem =
           err.status === 400
-            ? 'Transição de status inválida. Siga ABERTO → EM_ANDAMENTO → RESOLVIDO.'
-            : 'Falha ao atualizar status do ticket.';
-        this.loadTickets();
-        this.cdr.detectChanges();
+            ? 'Não é possível pular etapas do chamado. O fluxo obrigatório é ABERTO → EM ANDAMENTO → RESOLVIDO.'
+            : 'Falha ao atualizar o status do chamado.';
+
+        if (this.handleError(err, mensagem)) {
+          // Recarrega para que o seletor volte a exibir o status real do chamado.
+          this.loadTickets();
+        }
       },
     });
+  }
+
+  /**
+   * Traduz o erro HTTP em uma mensagem visível na tela.
+   *
+   * Apenas o 401 (token ausente/expirado) encerra a sessão. Um 403 significa
+   * que o perfil não permite a ação — deslogar nesse caso era o que derrubava
+   * o morador ao tentar mudar o status de um chamado.
+   *
+   * @returns true se a sessão continua ativa, false se o usuário foi deslogado.
+   */
+  private handleError(err: HttpErrorResponse, fallback: string): boolean {
+    if (err.status === 401) {
+      this.authService.logout();
+      return false;
+    }
+
+    this.errorMessage =
+      err.status === 403 ? 'Seu perfil não permite executar esta ação.' : fallback;
+    this.cdr.detectChanges();
+    return true;
+  }
+
+  dismissError(): void {
+    this.errorMessage = '';
   }
 
   private loadTickets(): void {
@@ -175,14 +188,7 @@ export class TicketsPageComponent implements OnInit {
         this.tickets = tickets;
         this.cdr.detectChanges();
       },
-      error: (err: HttpErrorResponse) => {
-        if (err.status === 401 || err.status === 403) {
-          this.authService.logout();
-          return;
-        }
-        this.errorMessage = 'Falha ao carregar chamados do backend.';
-        this.cdr.detectChanges();
-      },
+      error: (err: HttpErrorResponse) => this.handleError(err, 'Falha ao carregar chamados do backend.'),
     });
   }
 

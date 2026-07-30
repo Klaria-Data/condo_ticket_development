@@ -87,6 +87,13 @@ npm run build
 ## Observacoes
 
 - O frontend espera que a API Gateway esteja em `http://127.0.0.1:8000`.
+- Para apontar o frontend para outro backend, troque a `apiUrl` em
+  `src/environments/environment.ts`. Ex.: monolito `backend/` na porta 8080 →
+  `apiUrl: 'http://127.0.0.1:8080'`.
+- Se a aplicacao se comportar como uma versao antiga da API, confirme quem atende a
+  porta 8000 com `curl -s -I http://127.0.0.1:8000/login`. O header `server` mostra se
+  e o gateway (`nginx`) ou um processo local (`uvicorn`) — os dois podem escutar a
+  mesma porta, e o local ganha.
 - Para testar convites sem SMTP, use o link retornado pela API ao criar o convite.
 - Chaves usadas no `localStorage`:
   - `condoticket.jwt`

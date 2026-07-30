@@ -30,6 +30,35 @@ Rotas especificas devem vir antes de rotas mais gerais. Por isso:
 - rotas de auth e convite ficam antes das rotas de tickets;
 - agendamentos e locais ficam apontados para `tickets`.
 
+## Solucao de Problemas
+
+### `502 Bad Gateway` depois de recriar um servico
+
+O nginx resolve o nome dos upstreams uma unica vez, na inicializacao, e guarda o IP.
+Quando um container e recriado ele ganha um IP novo e o gateway continua tentando o
+antigo (`connect() failed (111: Connection refused)` no log). Reinicie o gateway:
+
+```bash
+docker compose restart nginx
+```
+
+### As respostas nao passam pelo nginx
+
+Se um processo local escutar em `127.0.0.1:8000`, ele vence o `0.0.0.0:8000` publicado
+pelo Docker, porque o bind e mais especifico. O gateway fica de pe, sem receber nada, e
+o log de acesso do nginx fica vazio. Confirme quem responde:
+
+```bash
+curl -s -I http://127.0.0.1:8000/login
+```
+
+O header `server: nginx/1.25.5` confirma o gateway. `server: uvicorn` indica um
+processo local na porta — normalmente o monolito de apoio `backend/`.
+
+Para rodar os dois ao mesmo tempo, deixe o gateway na `8000` e o monolito em outra
+porta, apontando a `apiUrl` do frontend para ela. As duas configuracoes estao
+descritas em `backend/README.md`.
+
 ## Como Adicionar Nova Rota
 
 1. Confirme qual microsservico e dono da regra.

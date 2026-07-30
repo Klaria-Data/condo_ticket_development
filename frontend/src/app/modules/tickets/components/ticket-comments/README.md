@@ -38,7 +38,7 @@ Lista todos os comentários de um ticket.
 
 #### `POST /tickets/{ticket_id}/comentarios`
 
-Cria um novo comentário em um ticket. **Qualquer usuário autenticado (ADMIN ou MORADOR) pode criar comentários.**
+Cria um novo comentário em um ticket. **O MORADOR comenta apenas nos chamados que abriu; o ADMIN, em todos.** Chamado de outro morador responde `403`.
 
 **Autenticação:** Requerida (JWT Bearer token)
 
@@ -100,14 +100,15 @@ O componente está integrado no `ticket-card`. Um botão permite expandir/retrai
 
 Ao expandir, mostra a seção de comentários:
 - Lista de comentários anteriores
-- Formulário para novo comentário (apenas se ADMIN)
+- Formulário para novo comentário (qualquer usuário autenticado)
 
 ## Permissões
 
 | Ação | ADMIN | MORADOR |
 |------|-------|---------|
-| Ver comentários | ✅ Sim | ✅ Sim |
-| Criar comentário | ✅ Sim | ✅ Sim |
+| Ver comentários | ✅ Todos os chamados | ✅ Só os próprios chamados |
+| Criar comentário | ✅ Todos os chamados | ✅ Só os próprios chamados |
+| Editar/excluir comentário | ✅ Qualquer autor | ✅ Só os próprios comentários |
 
 ## Modelagem de Dados
 
@@ -129,41 +130,47 @@ CREATE TABLE COMENTARIO_TICKET (
 
 ### 1. Com Mock (sem backend rodando)
 
-1. No frontend, use os dados fake já configurados:
+1. Ligue o mock em `frontend/src/environments/environment.ts`:
+   ```ts
+   useMock: true
+   ```
+   O `mockInterceptor` responde às chamadas HTTP localmente. Não há código
+   comentado nos services — o chaveamento é só essa flag.
+
+2. Suba o frontend:
    ```bash
    cd frontend
    npm start
    ```
 
-2. Faça login com qualquer email/senha
-3. Clique em "► Ver Comentários" em qualquer ticket
-4. Veja os comentários mock
-5. Se estiver como ADMIN, você verá o formulário para adicionar comentários
+3. Faça login com qualquer email/senha
+4. Clique em "► Ver Comentários" em qualquer ticket
+5. Veja os comentários mock. O formulário de novo comentário aparece para
+   qualquer usuário autenticado, não só para o ADMIN
 
-### 2. Com Backend rodando
+### 2. Com a API real
 
-1. **Inicie o backend:**
-   ```bash
-   cd backend
-   source .venv/Scripts/activate
-   py -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-   ```
+O caminho principal é o de microsserviços, com o gateway na porta 8000:
 
-2. **Inicie o frontend:**
-   ```bash
-   cd frontend
-   npm start
-   ```
+```bash
+docker compose up --build
+```
 
-3. **Descomente o código real nos services:**
-   - `frontend/src/app/core/services/comments.service.ts` - Descomente o `return this.http...`
-   - Opcionalmente, faça o mesmo com `auth.service.ts` e `tickets.service.ts` para usar a API real
+Mantenha `useMock: false` em `environment.ts` (é o padrão).
 
-4. **Teste:**
-   - Faça login com credenciais válidas
-   - Crie um ticket
-   - Como admin, abra o ticket e adicione um comentário
-   - Veja o comentário aparecer imediatamente
+Para usar o monolito de apoio `backend/`, siga uma das duas formas do
+`backend/README.md`: pare o gateway (`docker compose stop nginx`) e suba o monolito
+na 8000, ou suba-o na 8080 e troque a `apiUrl` do ambiente para essa porta.
+
+> No monolito, **editar e excluir comentário não funcionam** — as rotas
+> `PUT` e `DELETE /tickets/{id}/comentarios/{cid}` existem só em `services/`.
+> Para testar esses dois botões, use os microsserviços.
+
+**Teste:**
+- Faça login com credenciais válidas
+- Crie um chamado
+- Abra o chamado e adicione um comentário
+- Veja o comentário aparecer imediatamente
 
 ## Fluxo de Uso
 

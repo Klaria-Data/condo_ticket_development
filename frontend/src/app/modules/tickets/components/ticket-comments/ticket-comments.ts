@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, Input, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommentsService, Comment } from '../../../../core/services/comments.service';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -45,6 +45,7 @@ export class TicketCommentsComponent implements OnInit {
     private readonly commentsService: CommentsService,
     private readonly authService: AuthService,
     private readonly fb: FormBuilder,
+    private readonly cdr: ChangeDetectorRef,
   ) {
     this.commentForm = this.fb.group({
       mensagem: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(2000)]],
@@ -73,9 +74,12 @@ export class TicketCommentsComponent implements OnInit {
       next: (comments: Comment[]) => {
         this.comments = comments;
         this.loading = false;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.loading = false;
+        this.errorMessage = 'Falha ao carregar os comentários deste chamado.';
+        this.cdr.detectChanges();
       },
     });
   }
@@ -89,12 +93,14 @@ export class TicketCommentsComponent implements OnInit {
     const payload = this.commentForm.value as { mensagem: string };
     this.commentsService.createComment(this.ticketId, payload).subscribe({
       next: (newComment: Comment) => {
-        this.comments.push(newComment);
+        this.comments = [...this.comments, newComment];
         this.commentForm.reset();
         this.errorMessage = null;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.errorMessage = 'Falha ao enviar comentário.';
+        this.cdr.detectChanges();
       },
     });
   }
@@ -126,15 +132,14 @@ export class TicketCommentsComponent implements OnInit {
       .updateComment(this.ticketId, comment.id, { mensagem: this.editingMessage })
       .subscribe({
         next: (updated: Comment) => {
-          const index = this.comments.findIndex((c) => c.id === comment.id);
-          if (index !== -1) {
-            this.comments[index] = updated;
-          }
+          this.comments = this.comments.map((c) => (c.id === comment.id ? updated : c));
           this.cancelEdit();
           this.errorMessage = null;
+          this.cdr.detectChanges();
         },
         error: () => {
           this.errorMessage = 'Falha ao editar comentário.';
+          this.cdr.detectChanges();
         },
       });
   }
@@ -149,9 +154,11 @@ export class TicketCommentsComponent implements OnInit {
       next: () => {
         this.comments = this.comments.filter((c) => c.id !== commentId);
         this.errorMessage = null;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.errorMessage = 'Falha ao remover comentário.';
+        this.cdr.detectChanges();
       },
     });
   }

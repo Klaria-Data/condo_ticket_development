@@ -6,17 +6,21 @@ Porta interna: `8003`.
 
 ## Responsabilidades
 
-- Listar comentarios de um chamado.
-- Criar comentarios.
+- Listar comentarios de um chamado visivel ao usuario.
+- Criar comentarios em um chamado visivel ao usuario.
 - Editar comentarios do proprio autor ou de qualquer usuario quando o perfil for `ADMIN`.
 - Remover comentarios do proprio autor ou de qualquer usuario quando o perfil for `ADMIN`.
+
+A visibilidade segue a mesma regra de `GET /tickets`: o `MORADOR` so acessa os
+comentarios dos chamados que ele abriu; o `ADMIN` acessa os de todos. Chamado de
+outro morador responde `403`.
 
 ## Endpoints
 
 | Metodo | Rota | Auth | Perfil | Descricao |
 | --- | --- | --- | --- | --- |
-| GET | `/tickets/{id}/comentarios` | Sim | Qualquer | Lista comentarios |
-| POST | `/tickets/{id}/comentarios` | Sim | Qualquer | Cria comentario |
+| GET | `/tickets/{id}/comentarios` | Sim | Dono/ADMIN | Lista comentarios |
+| POST | `/tickets/{id}/comentarios` | Sim | Dono/ADMIN | Cria comentario |
 | PUT | `/tickets/{id}/comentarios/{cid}` | Sim | Autor/ADMIN | Edita comentario |
 | DELETE | `/tickets/{id}/comentarios/{cid}` | Sim | Autor/ADMIN | Remove comentario |
 

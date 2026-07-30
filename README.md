@@ -77,6 +77,14 @@ Essas credenciais são apenas para desenvolvimento local. Em outro ambiente, sob
 
 ## Como Rodar Localmente Sem Docker
 
+A porta `8000` e a porta que o frontend chama, e um servidor por vez a atende.
+Suba os microservicos nas portas `8001`, `8002` e `8003` e coloque o nginx (ou um
+proxy equivalente) na `8000`, como descrito no fim desta secao.
+
+Para usar o monolito de apoio `backend/` em vez deles, veja `backend/README.md`:
+pare o gateway com `docker compose stop nginx` e suba o monolito na `8000`, ou
+suba-o na `8080` e aponte a `apiUrl` do frontend para essa porta.
+
 Suba o MySQL com o banco `condoticket` criado:
 
 ```sql
@@ -153,7 +161,7 @@ docker compose exec mysql mysql -uroot -proot condoticket
 | Perfil | Permissoes |
 | --- | --- |
 | `ADMIN` | ve todos os chamados, atualiza status, cadastra locais agendaveis, convida moradores |
-| `MORADOR` | cria chamados, ve seus chamados, comenta, reserva locais disponiveis |
+| `MORADOR` | cria chamados, ve seus chamados, comenta nos proprios chamados, reserva locais disponiveis |
 
 ## Principais Rotas da API
 
@@ -161,7 +169,7 @@ docker compose exec mysql mysql -uroot -proot condoticket
 
 | Metodo | Rota | Auth | Perfil | Descricao |
 | --- | --- | --- | --- | --- |
-| POST | `/registro` | Nao | - | Registra usuario diretamente |
+| POST | `/registro` | Nao | - | Registra usuario diretamente (sempre como MORADOR) |
 | POST | `/login` | Nao | - | Autentica e retorna JWT |
 | POST | `/moradores/convites` | Sim | ADMIN | Cria convite para morador |
 | GET | `/moradores/convites` | Sim | ADMIN | Lista convites enviados |
@@ -184,8 +192,8 @@ docker compose exec mysql mysql -uroot -proot condoticket
 
 | Metodo | Rota | Auth | Perfil | Descricao |
 | --- | --- | --- | --- | --- |
-| GET | `/tickets/{id}/comentarios` | Sim | Qualquer | Lista comentarios |
-| POST | `/tickets/{id}/comentarios` | Sim | Qualquer | Cria comentario |
+| GET | `/tickets/{id}/comentarios` | Sim | Dono/ADMIN | Lista comentarios |
+| POST | `/tickets/{id}/comentarios` | Sim | Dono/ADMIN | Cria comentario |
 | PUT | `/tickets/{id}/comentarios/{cid}` | Sim | Autor/ADMIN | Edita comentario |
 | DELETE | `/tickets/{id}/comentarios/{cid}` | Sim | Autor/ADMIN | Remove comentario |
 
@@ -218,6 +226,12 @@ npm run build
 
 ## Observacoes de Manutencao
 
+- Reinicie o `nginx` sempre que recriar um servico (`docker compose up -d --build auth`).
+  O nginx resolve os nomes dos upstreams uma unica vez, na inicializacao, e mantem o IP
+  antigo do container: o gateway responde `502 Bad Gateway` ate `docker compose restart nginx`.
+- Ao investigar comportamento estranho na API, confirme antes quem atende a porta 8000
+  com `curl -s -I http://127.0.0.1:8000/login`. Se o header `server` nao for `nginx`,
+  ha um processo local no lugar do gateway.
 - A pasta `services/` deve ser a fonte principal para novas regras de backend.
 - A pasta `backend/` existe para compatibilidade e testes locais; evite adicionar features novas apenas nela.
 - Sempre que criar rota nova, atualize `nginx/nginx.conf` e este README.
